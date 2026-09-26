@@ -1,0 +1,36 @@
+@baseUrl = https://localhost:7126
+@productId = ca6f2e9a-24b5-4194-bb2a-66ce34b6a469
+@locationId = 204f06e3-e969-41fd-9c7c-1ba6eff901a6
+
+### All stock balances
+GET {{baseUrl}}/api/stock/balances?pageNumber=1&pageSize=20
+
+### One product across all locations
+GET {{baseUrl}}/api/stock/balances?productId={{productId}}
+
+### All products at one location
+GET {{baseUrl}}/api/stock/balances?inventoryLocationId={{locationId}}
+
+### One product at one location
+GET {{baseUrl}}/api/stock/balances?productId={{productId}}&inventoryLocationId={{locationId}}
+
+### All stock movements
+GET {{baseUrl}}/api/stock/movements?pageNumber=1&pageSize=20
+
+### Movement history for one product at one location
+GET {{baseUrl}}/api/stock/movements?productId={{productId}}&inventoryLocationId={{locationId}}
+
+### Second page of movements
+GET {{baseUrl}}/api/stock/movements?pageNumber=2&pageSize=1
+
+### Invalid page size
+GET {{baseUrl}}/api/stock/balances?pageSize=201
+
+### Invalid product ID
+GET {{baseUrl}}/api/stock/balances?productId=00000000-0000-0000-0000-000000000000
+
+### Existing purchase movements must still load
+GET {{baseUrl}}/api/stock/movements?productId={{productId}}&inventoryLocationId={{locationId}}
+
+### Existing balance must be unchanged
+GET {{baseUrl}}/api/stock/balances?productId={{productId}}&inventoryLocationId={{locationId}}

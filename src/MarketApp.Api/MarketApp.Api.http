@@ -1,0 +1,22 @@
+@MarketApp.Api_HostAddress = https://localhost:7126
+
+GET {{MarketApp.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+
+GET {{MarketApp.Api_HostAddress}}/health/database
+
+###
+
+GET {{MarketApp.Api_HostAddress}}/health/database
+
+###
+
+GET {{MarketApp.Api_HostAddress}}/debug/errors/conflict
+
+###
+
+GET {{MarketApp.Api_HostAddress}}/debug/errors/unexpected
+
+###

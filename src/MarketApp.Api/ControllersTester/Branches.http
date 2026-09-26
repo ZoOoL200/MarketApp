@@ -1,0 +1,64 @@
+@baseUrl = https://localhost:7126
+@branchId = ba7c4374-a68b-4c60-ab06-55ac62505670
+
+### Create a branch
+POST {{baseUrl}}/api/branches
+Content-Type: application/json
+
+{
+  "name": "Main Branch",
+  "code": " br-001 ",
+  "address": "Main Street",
+  "phone": null,
+  "isActive": true
+}
+
+### Get the first page
+GET {{baseUrl}}/api/branches?pageNumber=1&pageSize=20
+
+### Get one branch
+GET {{baseUrl}}/api/branches/{{branchId}}
+
+### Update and deactivate the branch
+PUT {{baseUrl}}/api/branches/{{branchId}}
+Content-Type: application/json
+
+{
+  "name": "Main Branch Updated",
+  "code": "BR-001",
+  "address": "New Street",
+  "phone": null,
+  "isActive": true
+}
+
+### List active branches
+GET {{baseUrl}}/api/branches?isActive=true
+
+### List inactive branches
+GET {{baseUrl}}/api/branches?isActive=false
+
+### Duplicate code, including an inactive branch
+POST {{baseUrl}}/api/branches
+Content-Type: application/json
+
+{
+  "name": "Another Branch",
+  "code": "br-001",
+  "isActive": true
+}
+
+### Blank name
+POST {{baseUrl}}/api/branches
+Content-Type: application/json
+
+{
+  "name": "   ",
+  "code": "BR-002",
+  "isActive": true
+}
+
+### Invalid page size
+GET {{baseUrl}}/api/branches?pageSize=201
+
+### Missing branch
+GET {{baseUrl}}/api/branches/00000000-0000-0000-0000-000000000000

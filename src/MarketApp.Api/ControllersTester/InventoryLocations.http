@@ -1,0 +1,72 @@
+@baseUrl = https://localhost:7126
+@branchId = ba7c4374-a68b-4c60-ab06-55ac62505670
+@locationId = 204f06e3-e969-41fd-9c7c-1ba6eff901a6
+
+### Find an active branch
+GET {{baseUrl}}/api/branches?isActive=true
+
+### Create a central warehouse
+POST {{baseUrl}}/api/inventory-locations
+Content-Type: application/json
+
+{
+  "name": "Central Warehouse",
+  "code": " wh-001 ",
+  "branchId": null,
+  "isActive": true
+}
+
+### Create a branch location
+POST {{baseUrl}}/api/inventory-locations
+Content-Type: application/json
+
+{
+  "name": "Main Branch Stockroom",
+  "code": "LOC-001",
+  "branchId": "{{branchId}}",
+  "isActive": true
+}
+
+### List all locations
+GET {{baseUrl}}/api/inventory-locations?pageNumber=1&pageSize=20
+
+### List locations for one branch
+GET {{baseUrl}}/api/inventory-locations?branchId={{branchId}}
+
+### Get one location
+GET {{baseUrl}}/api/inventory-locations/{{locationId}}
+
+### Update and deactivate
+PUT {{baseUrl}}/api/inventory-locations/{{locationId}}
+Content-Type: application/json
+
+{
+  "name": "Main Branch Stockroom Updated",
+  "code": "LOC-001",
+  "isActive": true
+}
+
+### Duplicate code
+POST {{baseUrl}}/api/inventory-locations
+Content-Type: application/json
+
+{
+  "name": "Another Warehouse",
+  "code": "wh-001",
+  "branchId": null,
+  "isActive": true
+}
+
+### Invalid branch
+POST {{baseUrl}}/api/inventory-locations
+Content-Type: application/json
+
+{
+  "name": "Invalid Branch Location",
+  "code": "LOC-002",
+  "branchId": "00000000-0000-0000-0000-000000000000",
+  "isActive": true
+}
+
+### Invalid page size
+GET {{baseUrl}}/api/inventory-locations?pageSize=201

@@ -1,0 +1,77 @@
+@baseUrl = https://localhost:7126
+@supplierId = ed0d3083-a567-43f5-b386-611e2b9c766e
+
+### Create a supplier
+POST {{baseUrl}}/api/suppliers
+Content-Type: application/json
+
+{
+  "name": "Nile Trading",
+  "code": " sup-001 ",
+  "phone": null,
+  "email": "sales@example.com",
+  "address": "Main Street",
+  "isActive": true
+}
+
+### Get the first page
+GET {{baseUrl}}/api/suppliers?pageNumber=1&pageSize=20
+
+### Get one supplier
+GET {{baseUrl}}/api/suppliers/{{supplierId}}
+
+### Update and deactivate
+PUT {{baseUrl}}/api/suppliers/{{supplierId}}
+Content-Type: application/json
+
+{
+  "name": "Nile Trading Updated",
+  "code": "SUP-001",
+  "phone": null,
+  "email": null,
+  "address": "New Street",
+  "isActive": true
+}
+
+### List active suppliers
+GET {{baseUrl}}/api/suppliers?isActive=true
+
+### List inactive suppliers
+GET {{baseUrl}}/api/suppliers?isActive=false
+
+### Duplicate code
+POST {{baseUrl}}/api/suppliers
+Content-Type: application/json
+
+{
+  "name": "Another Supplier",
+  "code": "sup-001",
+  "isActive": true
+}
+
+### Invalid email
+POST {{baseUrl}}/api/suppliers
+Content-Type: application/json
+
+{
+  "name": "Test Supplier",
+  "code": "SUP-002",
+  "email": "invalid-email",
+  "isActive": true
+}
+
+### Blank name
+POST {{baseUrl}}/api/suppliers
+Content-Type: application/json
+
+{
+  "name": "   ",
+  "code": "SUP-003",
+  "isActive": true
+}
+
+### Invalid page size
+GET {{baseUrl}}/api/suppliers?pageSize=201
+
+### Missing supplier
+GET {{baseUrl}}/api/suppliers/00000000-0000-0000-0000-000000000000

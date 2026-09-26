@@ -1,0 +1,34 @@
+@baseUrl = https://localhost:7126
+@categoryId = 5f2e9778-e1b7-4dff-89ad-3075c0e20482
+### Create a category
+POST {{baseUrl}}/api/categories
+Content-Type: application/json
+
+{
+  "name": "Beverages"
+}
+
+### Get all categories
+GET {{baseUrl}}/api/categories
+
+### Get one category
+GET {{baseUrl}}/api/categories/{{categoryId}}
+
+### Update the category
+PUT {{baseUrl}}/api/categories/{{categoryId}}
+Content-Type: application/json
+
+{
+  "name": "Drinks"
+}
+
+### Check validation
+POST {{baseUrl}}/api/categories
+Content-Type: application/json
+
+{
+  "name": "   "
+}
+
+### Delete the test category
+DELETE {{baseUrl}}/api/categories/{{categoryId}}
