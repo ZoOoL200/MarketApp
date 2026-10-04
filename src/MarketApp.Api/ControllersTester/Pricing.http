@@ -1,0 +1,51 @@
+@baseUrl = https://localhost:7126
+
+@stakeholderToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImUyNmI3YTE3LWZlMTgtNGRlMi1hYzk1LTZlNGJlMzUxMTkzZSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhaG1lZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFobWVkcmFiaWVzYWlkQGdtYWlsLmNvbSIsIkFzcE5ldC5JZGVudGl0eS5TZWN1cml0eVN0YW1wIjoiUlRNT1hYTkRRV1BJR0c3N0FDWjVVUEpEUUg0U1hIS0EiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJTdGFrZWhvbGRlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiYjgyM2Y0OGUtY2Y0Zi00M2U1LTgwNDEtMGMwYzcxMDI3YTJiIiwic3ViIjoiZTI2YjdhMTctZmUxOC00ZGUyLWFjOTUtNmU0YmUzNTExOTNlIiwianRpIjoiYTBjZGMxMTVhMTYxNDIwNWE4N2Y0ZjRjZGEwOGZkMmQiLCJpYXQiOjE3OTA5Mjk2NDksIm5iZiI6MTc5MDkyOTY0OSwiZXhwIjoxNzkwOTMxNDQ5LCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ.cJ37OpsyVxD3kuZNkXZviXdFlHVrKLvVOH-JXgkrXnA
+@managerToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjRiNjE2MzYzLTAwNmYtNGE3ZS1iZjk4LWYwZGI2NTA5ZjE0YiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJtYW5hZ2VyLmJyYW5jaDEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJtYW5hZ2VyMUBnbWFpbC5jb20iLCJBc3BOZXQuSWRlbnRpdHkuU2VjdXJpdHlTdGFtcCI6IjNGU0EySTRSVVJaTEMyM0E3SE9DSVcyVUxONERSQ1VWIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQnJhbmNoTWFuYWdlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiNDJmMWY2ZWYtZjIzOS00NGRhLTg0NWItN2Q2MTA5ZmQzM2NmIiwic3ViIjoiNGI2MTYzNjMtMDA2Zi00YTdlLWJmOTgtZjBkYjY1MDlmMTRiIiwianRpIjoiMzUyMjFmMmEyZWRlNGIwZWE0ZTQ2YTg2ZDllMWUzMjYiLCJpYXQiOjE3OTA5MzAzODMsIm5iZiI6MTc5MDkzMDM4MywiZXhwIjoxNzkwOTMyMTgzLCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ.L9Nci4-rWHyCbQW_H8tN4U8ORKlCT_h8MHzvpsvMKj4
+@sellerToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjBmYjc0NzI1LTQ0Y2ItNDM5MC1hMjhjLTczODdhMzlkZjdjNSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJzZWxsZXIuYnJhbmNoMSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6InNlbGxlcjFAZ21haWwuY29tIiwiQXNwTmV0LklkZW50aXR5LlNlY3VyaXR5U3RhbXAiOiJRRldSN1MyUkRaTDcyRlNWRkhMSUhTUVZRTFBWN1RCRCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlNlbGxlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiYzY4MTFkZmItM2RjMy00ZjMyLWJmNDQtZDg0NjBkMzcwZmUxIiwic3ViIjoiMGZiNzQ3MjUtNDRjYi00MzkwLWEyOGMtNzM4N2EzOWRmN2M1IiwianRpIjoiYzJiOGYxMzNhNjAxNDhhYzliNWFlYTQxMTNlOTkxYzMiLCJpYXQiOjE3OTA5MzA0MzgsIm5iZiI6MTc5MDkzMDQzOCwiZXhwIjoxNzkwOTMyMjM4LCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ._vDiGOVyPfnUcsNWAzvmbWzNpBnlphTG1D40BeSLzmM
+
+@branchId = ba7c4374-a68b-4c60-ab06-55ac62505670
+@otherBranchId = 277d0078-a483-440b-bae4-214b77ac9466
+@productId = ca6f2e9a-24b5-4194-bb2a-66ce34b6a469
+
+### Read the management price
+GET {{baseUrl}}/api/branches/{{branchId}}/product-prices/{{productId}}
+Authorization: Bearer {{stakeholderToken}}
+
+### Stakeholder sets the baseline
+PUT {{baseUrl}}/api/branches/{{branchId}}/product-prices/{{productId}}/baseline
+Authorization: Bearer {{stakeholderToken}}
+Content-Type: application/json
+
+{
+  "price": 100,
+  "expectedRevision": 0,
+  "reason": "Initial baseline"
+}
+
+### Manager sets the minimum selling price
+PUT {{baseUrl}}/api/branches/{{branchId}}/product-prices/{{productId}}/minimum-selling-price
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "price": 125,
+  "expectedRevision": 1,
+  "reason": "Initial selling price"
+}
+
+### Seller reads the selling price
+GET {{baseUrl}}/api/branches/{{branchId}}/selling-prices/{{productId}}
+Authorization: Bearer {{sellerToken}}
+
+### Manager reads pricing history
+GET {{baseUrl}}/api/branches/{{branchId}}/product-prices/{{productId}}/history?pageNumber=1&pageSize=20
+Authorization: Bearer {{managerToken}}
+
+### Seller attempts to read management prices
+GET {{baseUrl}}/api/branches/{{branchId}}/product-prices/{{productId}}
+Authorization: Bearer {{sellerToken}}
+
+### Seller attempts to access another branch
+GET {{baseUrl}}/api/branches/{{otherBranchId}}/selling-prices/{{productId}}
+Authorization: Bearer {{sellerToken}}

@@ -21,9 +21,9 @@ POST {{baseUrl}}/api/inventory-locations
 Content-Type: application/json
 
 {
-  "name": "Main Branch Stockroom",
-  "code": "LOC-001",
-  "branchId": "{{branchId}}",
+  "name": "Second Branch Stockroom",
+  "code": "LOC-002",
+  "branchId": "277d0078-a483-440b-bae4-214b77ac9466",
   "isActive": true
 }
 

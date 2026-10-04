@@ -1,0 +1,24 @@
+@baseUrl = https://localhost:7126
+@stakeholderToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImUyNmI3YTE3LWZlMTgtNGRlMi1hYzk1LTZlNGJlMzUxMTkzZSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhaG1lZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFobWVkcmFiaWVzYWlkQGdtYWlsLmNvbSIsIkFzcE5ldC5JZGVudGl0eS5TZWN1cml0eVN0YW1wIjoiUlRNT1hYTkRRV1BJR0c3N0FDWjVVUEpEUUg0U1hIS0EiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJTdGFrZWhvbGRlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiMzc5YTI3MTgtZmIzMy00ZTJiLTkzYTktYTFmZDJiZWNmN2M4Iiwic3ViIjoiZTI2YjdhMTctZmUxOC00ZGUyLWFjOTUtNmU0YmUzNTExOTNlIiwianRpIjoiOGExYTRiN2E5ZWYwNDkyMjkzZThjMWY2MmI5ZTkwZTgiLCJpYXQiOjE3OTA4NTY1NjYsIm5iZiI6MTc5MDg1NjU2NiwiZXhwIjoxNzkwODU4MzY2LCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ.CxhSMckC9crLPseuYAkVY47rCy5rMcTfTPOqK5cuBcI
+@branchId = ba7c4374-a68b-4c60-ab06-55ac62505670
+@userId = 0fb74725-44cb-4390-a28c-7387a39df7c5
+
+### Create a seller
+POST {{baseUrl}}/api/users
+Authorization: Bearer {{stakeholderToken}}
+Content-Type: application/json
+
+{
+  "userName": "manager.branch1",
+  "fullName": "Branch One manger",
+  "email": "manager1@gmail.com",
+  "password": "abababab",
+  "role": "BranchManager",
+  "branchIds": [
+    "{{branchId}}"
+  ]
+}
+
+### Read the created account
+GET {{baseUrl}}/api/users/{{userId}}
+Authorization: Bearer {{stakeholderToken}}

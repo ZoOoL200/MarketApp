@@ -13,7 +13,7 @@ public class StockMovementConfiguration
         {
             table.HasCheckConstraint(
                 "CK_StockMovements_TypeAndQuantity",
-                "(\"MovementType\" IN (1, 3) " +
+                "(\"MovementType\" IN (1, 3, 4) " +
                 "AND \"QuantityChange\" > 0) OR " +
                 "(\"MovementType\" = 2 " +
                 "AND \"QuantityChange\" < 0)");
@@ -25,7 +25,7 @@ public class StockMovementConfiguration
                 "AND \"PurchaseInvoiceLineId\" IS NOT NULL " +
                 "AND \"StockTransferLineId\" IS NULL" +
                 ") OR (" +
-                "\"MovementType\" IN (2, 3) " +
+                "\"MovementType\" IN (2, 3, 4) " +
                 "AND \"PurchaseInvoiceLineId\" IS NULL " +
                 "AND \"StockTransferLineId\" IS NOT NULL" +
                 ")");

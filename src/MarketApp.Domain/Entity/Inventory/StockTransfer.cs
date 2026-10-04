@@ -29,6 +29,11 @@ public class StockTransfer
     public DateTime? ShippedAtUtc { get; set; }
 
     public DateTime? ReceivedAtUtc { get; set; }
+    public string? ReturnReason { get; set; }
+
+    public DateTime? ReturnRequestedAtUtc { get; set; }
+
+    public DateTime? ReturnedAtUtc { get; set; }
 
     public uint Version { get; set; }
 

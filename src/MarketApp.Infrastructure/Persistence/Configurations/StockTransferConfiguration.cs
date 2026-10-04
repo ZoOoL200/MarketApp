@@ -17,7 +17,7 @@ public class StockTransferConfiguration
 
             table.HasCheckConstraint(
                 "CK_StockTransfers_Status",
-                "\"Status\" IN (1, 2, 3, 4)");
+                "\"Status\" IN (1, 2, 3, 4, 5, 6)");
 
             table.HasCheckConstraint(
                 "CK_StockTransfers_StatusTimestamps",
@@ -26,7 +26,7 @@ public class StockTransferConfiguration
                 "AND \"ShippedAtUtc\" IS NULL " +
                 "AND \"ReceivedAtUtc\" IS NULL" +
                 ") OR (" +
-                "\"Status\" = 2 " +
+                "\"Status\" IN (2, 5, 6) " +
                 "AND \"ShippedAtUtc\" IS NOT NULL " +
                 "AND \"ReceivedAtUtc\" IS NULL" +
                 ") OR (" +
@@ -34,6 +34,30 @@ public class StockTransferConfiguration
                 "AND \"ShippedAtUtc\" IS NOT NULL " +
                 "AND \"ReceivedAtUtc\" IS NOT NULL " +
                 "AND \"ReceivedAtUtc\" >= \"ShippedAtUtc\"" +
+                ")");
+
+            table.HasCheckConstraint(
+                "CK_StockTransfers_ReturnDetails",
+                "(" +
+                "\"Status\" IN (1, 2, 3, 4) " +
+                "AND \"ReturnRequestedAtUtc\" IS NULL " +
+                "AND \"ReturnedAtUtc\" IS NULL " +
+                "AND \"ReturnReason\" IS NULL" +
+                ") OR (" +
+                "\"Status\" = 5 " +
+                "AND \"ReturnRequestedAtUtc\" IS NOT NULL " +
+                "AND \"ReturnRequestedAtUtc\" >= \"ShippedAtUtc\" " +
+                "AND \"ReturnedAtUtc\" IS NULL " +
+                "AND \"ReturnReason\" IS NOT NULL " +
+                "AND length(btrim(\"ReturnReason\")) > 0" +
+                ") OR (" +
+                "\"Status\" = 6 " +
+                "AND \"ReturnRequestedAtUtc\" IS NOT NULL " +
+                "AND \"ReturnRequestedAtUtc\" >= \"ShippedAtUtc\" " +
+                "AND \"ReturnedAtUtc\" IS NOT NULL " +
+                "AND \"ReturnedAtUtc\" >= \"ReturnRequestedAtUtc\" " +
+                "AND \"ReturnReason\" IS NOT NULL " +
+                "AND length(btrim(\"ReturnReason\")) > 0" +
                 ")");
         });
 
@@ -63,6 +87,15 @@ public class StockTransferConfiguration
             .HasColumnType("timestamp with time zone");
 
         builder.Property(t => t.ReceivedAtUtc)
+            .HasColumnType("timestamp with time zone");
+
+        builder.Property(t => t.ReturnReason)
+            .HasMaxLength(500);
+
+        builder.Property(t => t.ReturnRequestedAtUtc)
+            .HasColumnType("timestamp with time zone");
+
+        builder.Property(t => t.ReturnedAtUtc)
             .HasColumnType("timestamp with time zone");
 
         builder.Property(t => t.Version)

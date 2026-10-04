@@ -1,13 +1,14 @@
 @baseUrl = https://localhost:7126
 @branchId = ba7c4374-a68b-4c60-ab06-55ac62505670
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImUyNmI3YTE3LWZlMTgtNGRlMi1hYzk1LTZlNGJlMzUxMTkzZSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhaG1lZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFobWVkcmFiaWVzYWlkQGdtYWlsLmNvbSIsIkFzcE5ldC5JZGVudGl0eS5TZWN1cml0eVN0YW1wIjoiUlRNT1hYTkRRV1BJR0c3N0FDWjVVUEpEUUg0U1hIS0EiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJTdGFrZWhvbGRlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiMTRlMWQ5NTEtNjZlMi00ZjRiLWI2MTctZmI3MjIxMzFjNGUwIiwic3ViIjoiZTI2YjdhMTctZmUxOC00ZGUyLWFjOTUtNmU0YmUzNTExOTNlIiwianRpIjoiNWQ4Y2JkNWY5ZmRhNGVmOTk3ZGY3MmMyMDM5OTNlMzMiLCJpYXQiOjE3OTA5Mjk5NjIsIm5iZiI6MTc5MDkyOTk2MiwiZXhwIjoxNzkwOTMxNzYyLCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ.gOCzeWhT9kMy8rFIjLX5qE5jh6xMZkH7jB5CNCSoe14
 
 ### Create a branch
 POST {{baseUrl}}/api/branches
 Content-Type: application/json
 
 {
-  "name": "Main Branch",
-  "code": " br-001 ",
+  "name": "Second Branch",
+  "code": " br-002 ",
   "address": "Main Street",
   "phone": null,
   "isActive": true
@@ -15,6 +16,7 @@ Content-Type: application/json
 
 ### Get the first page
 GET {{baseUrl}}/api/branches?pageNumber=1&pageSize=20
+Authorization: Bearer {{accessToken}}
 
 ### Get one branch
 GET {{baseUrl}}/api/branches/{{branchId}}

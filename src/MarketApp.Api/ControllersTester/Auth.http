@@ -1,0 +1,79 @@
+@baseUrl = https://localhost:7126
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImUyNmI3YTE3LWZlMTgtNGRlMi1hYzk1LTZlNGJlMzUxMTkzZSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhaG1lZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFobWVkcmFiaWVzYWlkQGdtYWlsLmNvbSIsIkFzcE5ldC5JZGVudGl0eS5TZWN1cml0eVN0YW1wIjoiUlRNT1hYTkRRV1BJR0c3N0FDWjVVUEpEUUg0U1hIS0EiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJTdGFrZWhvbGRlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiMTRlMWQ5NTEtNjZlMi00ZjRiLWI2MTctZmI3MjIxMzFjNGUwIiwic3ViIjoiZTI2YjdhMTctZmUxOC00ZGUyLWFjOTUtNmU0YmUzNTExOTNlIiwianRpIjoiNWQ4Y2JkNWY5ZmRhNGVmOTk3ZGY3MmMyMDM5OTNlMzMiLCJpYXQiOjE3OTA5Mjk5NjIsIm5iZiI6MTc5MDkyOTk2MiwiZXhwIjoxNzkwOTMxNzYyLCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ.gOCzeWhT9kMy8rFIjLX5qE5jh6xMZkH7jB5CNCSoe14
+@refreshToken =GV3VwJ_hOGA446-5o_nxIh3BU7eI8Uahy3_Jim04KuM
+### Login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "userName": "ahmed",
+  "password": "izxp67099"
+}
+### Login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "userName": "manager.branch1",
+  "password": "abababab"
+}
+
+### Login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "userName": "seller.branch1",
+  "password": "abababab"
+}
+
+
+
+### Current user
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{accessToken}}
+
+### Renew tokens
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Sign out from this session
+POST {{baseUrl}}/api/auth/logout
+Authorization: Bearer {{accessToken}}
+
+### Request email verification
+POST {{baseUrl}}/api/auth/request-email-verification
+Authorization: Bearer {{accessToken}}
+
+### Confirm email
+POST {{baseUrl}}/api/auth/confirm-email
+Content-Type: application/json
+
+{
+  "userId": "e26b7a17-fe18-4de2-ac95-6e4be351193e",
+  "token": "Q2ZESjhBb1Z3cmd5UTJoUHV1a21TMndzUnU0NmtDTTk1MyswZG5MREM0WkNVZW1hTy92ZTJmZjdZLzJYSGo0QlJsZHNjdzh5TzlqNTFGRWx5Nm5mNHkvTWpQeHFQNjYyQkV3cUw4eHZSb2daV0FWSFg0cFNKcU1IbXE1SmtVckFLWHF0SWdTM3FJWHA1OEw1L1diWWI2dEd2ZDlUZGpNOTNiV2kxL0dVRWl2dUhDM3RidERGYVlFL3hlME51UUxIRUxLM3kraExZN1oxZjh1S3BOZ1hUSE44anY5R0ZORjE4MHpiRVpUNURHbnozYkVBSTN1c2NFcWFxbURqdngyMVV6UHBhZz09"
+}
+
+
+### Request password reset
+POST {{baseUrl}}/api/auth/forgot-password
+Content-Type: application/json
+
+{
+  "userName": "ahmed"
+}
+
+### Reset password
+POST {{baseUrl}}/api/auth/reset-password
+Content-Type: application/json
+
+{
+  "userId": "e26b7a17-fe18-4de2-ac95-6e4be351193e",
+  "token": "Q2ZESjhBb1Z3cmd5UTJoUHV1a21TMndzUnU2bzQyNlVFWHpoekJQbzhtT1pIOWJMWVNyN3Z4NmFzUnl3bzlGQTE2b0ZEQm5DNStXQmgzQ0gzMGVJTXJWMXh6NllvdUVGL3hhS1p6YXZFNnlENVdBeElFSlpaS0FoY2R0dmdRWm9tbGp0R2pNVFZ3a3V5VDFGaDdlSFMvTEFjOXNyTE45M09kWWU5M2FVMHZpdE52RlhTUnNTd0kyK3BMZThIZzM5bVg1RHErWWRmU2dzYUphZUNnc3pQa3hhbGxLZ2w3WG9XMkZCZTNJTDFsY082MytC",
+  "newPassword": "izxp67099",
+  "confirmPassword": "izxp67099"
+}

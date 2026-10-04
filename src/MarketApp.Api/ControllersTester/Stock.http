@@ -1,6 +1,6 @@
 @baseUrl = https://localhost:7126
 @productId = ca6f2e9a-24b5-4194-bb2a-66ce34b6a469
-@locationId = 204f06e3-e969-41fd-9c7c-1ba6eff901a6
+@locationId = 46599a6f-bc0f-4cf8-b6ad-83e9312a042c
 
 ### All stock balances
 GET {{baseUrl}}/api/stock/balances?pageNumber=1&pageSize=20

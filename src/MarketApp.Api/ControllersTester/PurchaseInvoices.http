@@ -1,8 +1,8 @@
 @baseUrl = https://localhost:7126
 @supplierId = ed0d3083-a567-43f5-b386-611e2b9c766e
-@locationId = 204f06e3-e969-41fd-9c7c-1ba6eff901a6
+@locationId = 46599a6f-bc0f-4cf8-b6ad-83e9312a042c
 @productId = ca6f2e9a-24b5-4194-bb2a-66ce34b6a469
-@invoiceId = dc44aa7a-3c98-4ca7-9651-45943b4557b1
+@invoiceId = 70dfcfcc-e3b5-4db5-98ed-a7bb1af457c2
 
 ### Create a draft with the same product on two lines
 POST {{baseUrl}}/api/purchase-invoices
@@ -11,13 +11,13 @@ Content-Type: application/json
 {
   "supplierId": "{{supplierId}}",
   "inventoryLocationId": "{{locationId}}",
-  "invoiceDate": "2026-09-26",
+  "invoiceDate": "2026-09-30",
   "supplierInvoiceNumber": "SUP-INV-001",
-  "notes": "First test purchase",
+  "notes": "second test purchase",
   "lines": [
     {
       "productId": "{{productId}}",
-      "quantity": 10,
+      "quantity": 20,
       "unitCost": 5
     },
     {

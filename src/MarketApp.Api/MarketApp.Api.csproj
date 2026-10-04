@@ -20,6 +20,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>29fa97b5-8dc0-4ae9-a95c-e2e7cc95a829</UserSecretsId>
   </PropertyGroup>
 
 </Project>

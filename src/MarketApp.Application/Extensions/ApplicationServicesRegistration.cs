@@ -16,6 +16,8 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IInventoryLocationService,InventoryLocationService>();
         services.AddScoped<IPurchaseInvoiceService,PurchaseInvoiceService>();
         services.AddScoped<IStockService, StockService>();
+        services.AddScoped<IStockTransferService, StockTransferService>();
+        services.AddScoped<IBranchProductPriceService,BranchProductPriceService>();
 
         return services;
     }

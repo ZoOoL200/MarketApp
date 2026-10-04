@@ -4,5 +4,6 @@ public enum StockMovementType
 {
     PurchaseReceipt = 1,
     TransferOut = 2,
-    TransferIn = 3
+    TransferIn = 3,
+    TransferReturn = 4
 }

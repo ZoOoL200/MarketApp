@@ -2,6 +2,7 @@
 using MarketApp.Application.Persistence.Contracts;
 using MarketApp.Domain.Entity.Inventory;
 using MarketApp.Domain.Entity.Main;
+using MarketApp.Domain.Entity.Pricing;
 using MarketApp.Domain.Entity.Purchasing;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -22,6 +23,8 @@ public class UnitOfWork : IUnitOfWork
     public IGeneralRepository<PurchaseInvoice> PurchaseInvoices{ get; }
     public IGeneralRepository<StockMovement> StockMovements { get; }
     public IGeneralRepository<StockTransfer> StockTransfers { get; }
+    public IGeneralRepository<BranchProductPrice> BranchProductPrices{ get;}
+    public IGeneralRepository<BranchProductPriceHistory> BranchProductPriceHistories{get;}
 
     public UnitOfWork(
         AppDbContext context,
@@ -33,7 +36,9 @@ public class UnitOfWork : IUnitOfWork
         IGeneralRepository<StockBalance> stockBalances,
         IGeneralRepository<PurchaseInvoice> purchaseInvoices,
         IGeneralRepository<StockMovement> stockMovements,
-        IGeneralRepository<StockTransfer> stockTransfers)
+        IGeneralRepository<StockTransfer> stockTransfers,
+        IGeneralRepository<BranchProductPrice> branchProductPrices,
+        IGeneralRepository<BranchProductPriceHistory> branchProductPriceHistories)
     {
         _context = context;
         Categories = categories;
@@ -45,6 +50,8 @@ public class UnitOfWork : IUnitOfWork
         PurchaseInvoices = purchaseInvoices;
         StockMovements = stockMovements;
         StockTransfers = stockTransfers;
+        BranchProductPrices = branchProductPrices;
+        BranchProductPriceHistories = branchProductPriceHistories;
     }
 
     public async Task<int> SaveChangesAsync(
@@ -105,6 +112,13 @@ public class UnitOfWork : IUnitOfWork
 
                 "UX_StockMovements_TransferLine_Type" =>
                     "This transfer line already has a movement of this type.",
+
+                "UX_BranchProductPrices_Branch_Product" =>
+                    "Pricing already exists for this product and branch. " +
+                    "Refresh and try again.",
+
+                "UX_BranchPriceHistory_Price_Revision" =>
+                    "This price revision already exists. Refresh and try again.",
 
                 _ =>
                     "A record with the same unique value already exists."

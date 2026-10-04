@@ -1,0 +1,74 @@
+@baseUrl = https://localhost:7126
+@sourceLocationId = 46599a6f-bc0f-4cf8-b6ad-83e9312a042c
+@destinationLocationId = c2727378-b800-4077-b7cf-4541a97af1b1
+@productId = ca6f2e9a-24b5-4194-bb2a-66ce34b6a469
+@transferId = a2ff920c-b7a8-4728-a686-13f284b68d4a
+
+### Record starting source balance
+GET {{baseUrl}}/api/stock/balances?productId={{productId}}&inventoryLocationId={{sourceLocationId}}
+
+### Record starting destination balance
+GET {{baseUrl}}/api/stock/balances?productId={{productId}}&inventoryLocationId={{destinationLocationId}}
+
+### Create a NEW draft for this test
+POST {{baseUrl}}/api/stock-transfers
+Content-Type: application/json
+
+{
+  "sourceLocationId": "{{sourceLocationId}}",
+  "destinationLocationId": "{{destinationLocationId}}",
+  "notes": "Return workflow test",
+  "lines": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 5,
+      "baselineUnitPrice": 7
+    }
+  ]
+}
+
+### Ship
+POST {{baseUrl}}/api/stock-transfers/{{transferId}}/ship
+
+### Cannot confirm a return before requesting it
+POST {{baseUrl}}/api/stock-transfers/{{transferId}}/confirm-return
+
+### Request return while goods are in transit
+POST {{baseUrl}}/api/stock-transfers/{{transferId}}/request-return
+Content-Type: application/json
+
+{
+  "reason": "The branch cancelled the delivery."
+}
+
+### Repeat request — original reason and timestamp are preserved
+POST {{baseUrl}}/api/stock-transfers/{{transferId}}/request-return
+Content-Type: application/json
+
+{
+  "reason": "The branch cancelled the delivery."
+}
+
+### Destination receipt must now be blocked
+POST {{baseUrl}}/api/stock-transfers/{{transferId}}/receive
+
+### Source stock must still be reduced by 5
+GET {{baseUrl}}/api/stock/balances?productId={{productId}}&inventoryLocationId={{sourceLocationId}}
+
+### Confirm all goods arrived back at the source
+POST {{baseUrl}}/api/stock-transfers/{{transferId}}/confirm-return
+
+### Repeat confirmation — no additional stock increase
+POST {{baseUrl}}/api/stock-transfers/{{transferId}}/confirm-return
+
+### Source stock should be restored
+GET {{baseUrl}}/api/stock/balances?productId={{productId}}&inventoryLocationId={{sourceLocationId}}
+
+### Destination stock should be unchanged
+GET {{baseUrl}}/api/stock/balances?productId={{productId}}&inventoryLocationId={{destinationLocationId}}
+
+### Check movement history
+GET {{baseUrl}}/api/stock/movements?productId={{productId}}&inventoryLocationId={{sourceLocationId}}
+
+### Check final transfer details
+GET {{baseUrl}}/api/stock-transfers/{{transferId}}

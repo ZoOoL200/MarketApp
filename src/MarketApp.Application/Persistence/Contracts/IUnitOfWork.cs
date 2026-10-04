@@ -1,5 +1,6 @@
 ﻿using MarketApp.Domain.Entity.Inventory;
 using MarketApp.Domain.Entity.Main;
+using MarketApp.Domain.Entity.Pricing;
 using MarketApp.Domain.Entity.Purchasing;
 
 namespace MarketApp.Application.Persistence.Contracts;
@@ -16,6 +17,8 @@ public interface IUnitOfWork
     IGeneralRepository<PurchaseInvoice> PurchaseInvoices { get; }
     IGeneralRepository<StockMovement> StockMovements { get; }
     IGeneralRepository<StockTransfer> StockTransfers { get; }
+    IGeneralRepository<BranchProductPrice> BranchProductPrices { get; }
+    IGeneralRepository<BranchProductPriceHistory>BranchProductPriceHistories { get; }
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);
 }

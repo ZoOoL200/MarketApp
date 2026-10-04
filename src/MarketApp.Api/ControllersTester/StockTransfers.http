@@ -1,0 +1,61 @@
+@baseUrl = https://localhost:7126
+@sourceLocationId = 46599a6f-bc0f-4cf8-b6ad-83e9312a042c
+@destinationLocationId = c2727378-b800-4077-b7cf-4541a97af1b1
+@productId = ca6f2e9a-24b5-4194-bb2a-66ce34b6a469
+@transferId = 9e8e527b-a2f3-4646-b3c4-e764d8c99a3d
+
+### Check source balance before starting
+GET {{baseUrl}}/api/stock/balances?productId={{productId}}&inventoryLocationId={{sourceLocationId}}
+
+### Check destination balance before starting
+GET {{baseUrl}}/api/stock/balances?productId={{productId}}&inventoryLocationId={{destinationLocationId}}
+
+### Create a draft
+POST {{baseUrl}}/api/stock-transfers
+Content-Type: application/json
+
+{
+  "sourceLocationId": "{{sourceLocationId}}",
+  "destinationLocationId": "{{destinationLocationId}}",
+  "notes": "First branch delivery",
+  "lines": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 5,
+      "baselineUnitPrice": 7
+    }
+  ]
+}
+
+### Read the transfer
+GET {{baseUrl}}/api/stock-transfers/{{transferId}}
+
+### Receiving before shipping must fail
+POST {{baseUrl}}/api/stock-transfers/{{transferId}}/receive
+
+### Ship
+POST {{baseUrl}}/api/stock-transfers/{{transferId}}/ship
+
+### Repeat shipping — no additional deduction
+POST {{baseUrl}}/api/stock-transfers/{{transferId}}/ship
+
+### Source balance after shipping
+GET {{baseUrl}}/api/stock/balances?productId={{productId}}&inventoryLocationId={{sourceLocationId}}
+
+### Destination balance before receipt
+GET {{baseUrl}}/api/stock/balances?productId={{productId}}&inventoryLocationId={{destinationLocationId}}
+
+### Receive
+POST {{baseUrl}}/api/stock-transfers/{{transferId}}/receive
+
+### Repeat receipt — no additional increase
+POST {{baseUrl}}/api/stock-transfers/{{transferId}}/receive
+
+### Destination balance after receipt
+GET {{baseUrl}}/api/stock/balances?productId={{productId}}&inventoryLocationId={{destinationLocationId}}
+
+### Inspect the movement history
+GET {{baseUrl}}/api/stock/movements?productId={{productId}}
+
+### Cancelling a received transfer must fail
+POST {{baseUrl}}/api/stock-transfers/{{transferId}}/cancel

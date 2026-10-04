@@ -105,9 +105,9 @@ namespace MarketApp.Infrastructure.Migrations
 
                     b.ToTable("StockMovements", null, t =>
                         {
-                            t.HasCheckConstraint("CK_StockMovements_Source", "(\"MovementType\" = 1 AND \"PurchaseInvoiceLineId\" IS NOT NULL AND \"StockTransferLineId\" IS NULL) OR (\"MovementType\" IN (2, 3) AND \"PurchaseInvoiceLineId\" IS NULL AND \"StockTransferLineId\" IS NOT NULL)");
+                            t.HasCheckConstraint("CK_StockMovements_Source", "(\"MovementType\" = 1 AND \"PurchaseInvoiceLineId\" IS NOT NULL AND \"StockTransferLineId\" IS NULL) OR (\"MovementType\" IN (2, 3, 4) AND \"PurchaseInvoiceLineId\" IS NULL AND \"StockTransferLineId\" IS NOT NULL)");
 
-                            t.HasCheckConstraint("CK_StockMovements_TypeAndQuantity", "(\"MovementType\" IN (1, 3) AND \"QuantityChange\" > 0) OR (\"MovementType\" = 2 AND \"QuantityChange\" < 0)");
+                            t.HasCheckConstraint("CK_StockMovements_TypeAndQuantity", "(\"MovementType\" IN (1, 3, 4) AND \"QuantityChange\" > 0) OR (\"MovementType\" = 2 AND \"QuantityChange\" < 0)");
                         });
                 });
 
@@ -133,6 +133,16 @@ namespace MarketApp.Infrastructure.Migrations
                         .HasColumnType("character varying(40)");
 
                     b.Property<DateTime?>("ReceivedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReturnReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ReturnRequestedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ReturnedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("ShippedAtUtc")
@@ -166,9 +176,11 @@ namespace MarketApp.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("CK_StockTransfers_DifferentLocations", "\"SourceLocationId\" <> \"DestinationLocationId\"");
 
-                            t.HasCheckConstraint("CK_StockTransfers_Status", "\"Status\" IN (1, 2, 3, 4)");
+                            t.HasCheckConstraint("CK_StockTransfers_ReturnDetails", "(\"Status\" IN (1, 2, 3, 4) AND \"ReturnRequestedAtUtc\" IS NULL AND \"ReturnedAtUtc\" IS NULL AND \"ReturnReason\" IS NULL) OR (\"Status\" = 5 AND \"ReturnRequestedAtUtc\" IS NOT NULL AND \"ReturnRequestedAtUtc\" >= \"ShippedAtUtc\" AND \"ReturnedAtUtc\" IS NULL AND \"ReturnReason\" IS NOT NULL AND length(btrim(\"ReturnReason\")) > 0) OR (\"Status\" = 6 AND \"ReturnRequestedAtUtc\" IS NOT NULL AND \"ReturnRequestedAtUtc\" >= \"ShippedAtUtc\" AND \"ReturnedAtUtc\" IS NOT NULL AND \"ReturnedAtUtc\" >= \"ReturnRequestedAtUtc\" AND \"ReturnReason\" IS NOT NULL AND length(btrim(\"ReturnReason\")) > 0)");
 
-                            t.HasCheckConstraint("CK_StockTransfers_StatusTimestamps", "(\"Status\" IN (1, 4) AND \"ShippedAtUtc\" IS NULL AND \"ReceivedAtUtc\" IS NULL) OR (\"Status\" = 2 AND \"ShippedAtUtc\" IS NOT NULL AND \"ReceivedAtUtc\" IS NULL) OR (\"Status\" = 3 AND \"ShippedAtUtc\" IS NOT NULL AND \"ReceivedAtUtc\" IS NOT NULL AND \"ReceivedAtUtc\" >= \"ShippedAtUtc\")");
+                            t.HasCheckConstraint("CK_StockTransfers_Status", "\"Status\" IN (1, 2, 3, 4, 5, 6)");
+
+                            t.HasCheckConstraint("CK_StockTransfers_StatusTimestamps", "(\"Status\" IN (1, 4) AND \"ShippedAtUtc\" IS NULL AND \"ReceivedAtUtc\" IS NULL) OR (\"Status\" IN (2, 5, 6) AND \"ShippedAtUtc\" IS NOT NULL AND \"ReceivedAtUtc\" IS NULL) OR (\"Status\" = 3 AND \"ShippedAtUtc\" IS NOT NULL AND \"ReceivedAtUtc\" IS NOT NULL AND \"ReceivedAtUtc\" >= \"ShippedAtUtc\")");
                         });
                 });
 
@@ -367,6 +379,125 @@ namespace MarketApp.Infrastructure.Migrations
                     b.ToTable("Suppliers", (string)null);
                 });
 
+            modelBuilder.Entity("MarketApp.Domain.Entity.Pricing.BranchProductPrice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("BaselineUnitPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("MinimumSellingPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("BranchId", "ProductId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_BranchProductPrices_Branch_Product");
+
+                    b.ToTable("BranchProductPrices", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_BranchProductPrices_Baseline", "\"BaselineUnitPrice\" IS NULL OR \"BaselineUnitPrice\" >= 0");
+
+                            t.HasCheckConstraint("CK_BranchProductPrices_HasPrice", "\"BaselineUnitPrice\" IS NOT NULL OR \"MinimumSellingPrice\" IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_BranchProductPrices_Minimum", "\"MinimumSellingPrice\" IS NULL OR \"MinimumSellingPrice\" >= 0");
+
+                            t.HasCheckConstraint("CK_BranchProductPrices_Revision", "\"Revision\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("MarketApp.Domain.Entity.Pricing.BranchProductPriceHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BranchProductPriceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ChangeType")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ChangedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ChangedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("NewBaselineUnitPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal?>("NewMinimumSellingPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal?>("OldBaselineUnitPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal?>("OldMinimumSellingPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("StockTransferLineId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StockTransferLineId");
+
+                    b.HasIndex("BranchProductPriceId", "Revision")
+                        .IsUnique()
+                        .HasDatabaseName("UX_BranchPriceHistory_Price_Revision");
+
+                    b.ToTable("BranchProductPriceHistory", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_BranchPriceHistory_HasNewPrice", "\"NewBaselineUnitPrice\" IS NOT NULL OR \"NewMinimumSellingPrice\" IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_BranchPriceHistory_Prices", "(\"OldBaselineUnitPrice\" IS NULL OR \"OldBaselineUnitPrice\" >= 0) AND (\"NewBaselineUnitPrice\" IS NULL OR \"NewBaselineUnitPrice\" >= 0) AND (\"OldMinimumSellingPrice\" IS NULL OR \"OldMinimumSellingPrice\" >= 0) AND (\"NewMinimumSellingPrice\" IS NULL OR \"NewMinimumSellingPrice\" >= 0)");
+
+                            t.HasCheckConstraint("CK_BranchPriceHistory_Reason", "length(btrim(\"Reason\")) > 0");
+
+                            t.HasCheckConstraint("CK_BranchPriceHistory_Revision", "\"Revision\" > 0");
+
+                            t.HasCheckConstraint("CK_BranchPriceHistory_Source", "(\"ChangeType\" IN (1, 2) AND \"StockTransferLineId\" IS NULL) OR (\"ChangeType\" = 3 AND \"StockTransferLineId\" IS NOT NULL)");
+                        });
+                });
+
             modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoice", b =>
                 {
                     b.Property<Guid>("Id")
@@ -469,6 +600,328 @@ namespace MarketApp.Infrastructure.Migrations
 
                             t.HasCheckConstraint("CK_PurchaseInvoiceLines_UnitCost", "\"UnitCost\" >= 0");
                         });
+                });
+
+            modelBuilder.Entity("MarketApp.Infrastructure.Identity.ApplicationUser", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AccessFailedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<bool>("EmailConfirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("LockoutEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("NormalizedEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("NormalizedUserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("PhoneNumberConfirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("SecurityStamp")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedEmail")
+                        .IsUnique()
+                        .HasDatabaseName("EmailIndex");
+
+                    b.HasIndex("NormalizedUserName")
+                        .IsUnique()
+                        .HasDatabaseName("UserNameIndex");
+
+                    b.ToTable("AspNetUsers", (string)null);
+                });
+
+            modelBuilder.Entity("MarketApp.Infrastructure.Identity.ApplicationUserBranch", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("UserId", "BranchId");
+
+                    b.HasIndex("BranchId");
+
+                    b.ToTable("UserBranchAssignments", (string)null);
+                });
+
+            modelBuilder.Entity("MarketApp.Infrastructure.Identity.AuthSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastRefreshedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SecurityStamp")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAtUtc")
+                        .HasDatabaseName("IX_AuthSessions_Expiry");
+
+                    b.HasIndex("UserId", "ExpiresAtUtc")
+                        .HasDatabaseName("IX_AuthSessions_User_Expiry");
+
+                    b.ToTable("AuthSessions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_AuthSessions_Expiry", "\"ExpiresAtUtc\" > \"CreatedAtUtc\"");
+
+                            t.HasCheckConstraint("CK_AuthSessions_LastRefresh", "\"LastRefreshedAtUtc\" IS NULL OR \"LastRefreshedAtUtc\" >= \"CreatedAtUtc\"");
+
+                            t.HasCheckConstraint("CK_AuthSessions_Revocation", "\"RevokedAtUtc\" IS NULL OR \"RevokedAtUtc\" >= \"CreatedAtUtc\"");
+
+                            t.HasCheckConstraint("CK_AuthSessions_SecurityStamp", "length(btrim(\"SecurityStamp\")) > 0");
+                        });
+                });
+
+            modelBuilder.Entity("MarketApp.Infrastructure.Identity.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AuthSessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ConsumedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("UX_RefreshTokens_TokenHash");
+
+                    b.HasIndex("AuthSessionId", "CreatedAtUtc")
+                        .HasDatabaseName("IX_RefreshTokens_Session_Created");
+
+                    b.ToTable("RefreshTokens", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_RefreshTokens_Consumption", "\"ConsumedAtUtc\" IS NULL OR \"ConsumedAtUtc\" >= \"CreatedAtUtc\"");
+
+                            t.HasCheckConstraint("CK_RefreshTokens_Expiry", "\"ExpiresAtUtc\" > \"CreatedAtUtc\"");
+
+                            t.HasCheckConstraint("CK_RefreshTokens_Hash", "\"TokenHash\" ~ '^[0-9A-F]{64}$'");
+                        });
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("NormalizedName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedName")
+                        .IsUnique()
+                        .HasDatabaseName("RoleNameIndex");
+
+                    b.ToTable("AspNetRoles", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ClaimType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ClaimValue")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("AspNetRoleClaims", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ClaimType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ClaimValue")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AspNetUserClaims", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
+                {
+                    b.Property<string>("LoginProvider")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProviderKey")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProviderDisplayName")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("LoginProvider", "ProviderKey");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AspNetUserLogins", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("UserId", "RoleId");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("AspNetUserRoles", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("LoginProvider")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Value")
+                        .HasColumnType("text");
+
+                    b.HasKey("UserId", "LoginProvider", "Name");
+
+                    b.ToTable("AspNetUserTokens", (string)null);
                 });
 
             modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockBalance", b =>
@@ -582,6 +1035,43 @@ namespace MarketApp.Infrastructure.Migrations
                     b.Navigation("Category");
                 });
 
+            modelBuilder.Entity("MarketApp.Domain.Entity.Pricing.BranchProductPrice", b =>
+                {
+                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("MarketApp.Domain.Entity.Pricing.BranchProductPriceHistory", b =>
+                {
+                    b.HasOne("MarketApp.Domain.Entity.Pricing.BranchProductPrice", "BranchProductPrice")
+                        .WithMany()
+                        .HasForeignKey("BranchProductPriceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarketApp.Domain.Entity.Inventory.StockTransferLine", "StockTransferLine")
+                        .WithMany()
+                        .HasForeignKey("StockTransferLineId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("BranchProductPrice");
+
+                    b.Navigation("StockTransferLine");
+                });
+
             modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoice", b =>
                 {
                     b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "InventoryLocation")
@@ -620,6 +1110,98 @@ namespace MarketApp.Infrastructure.Migrations
                     b.Navigation("PurchaseInvoice");
                 });
 
+            modelBuilder.Entity("MarketApp.Infrastructure.Identity.ApplicationUserBranch", b =>
+                {
+                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", "User")
+                        .WithMany("BranchAssignments")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MarketApp.Infrastructure.Identity.AuthSession", b =>
+                {
+                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MarketApp.Infrastructure.Identity.RefreshToken", b =>
+                {
+                    b.HasOne("MarketApp.Infrastructure.Identity.AuthSession", "AuthSession")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("AuthSessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AuthSession");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
+                {
+                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
+                {
+                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
+                {
+                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockTransfer", b =>
                 {
                     b.Navigation("Lines");
@@ -633,6 +1215,16 @@ namespace MarketApp.Infrastructure.Migrations
             modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoice", b =>
                 {
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("MarketApp.Infrastructure.Identity.ApplicationUser", b =>
+                {
+                    b.Navigation("BranchAssignments");
+                });
+
+            modelBuilder.Entity("MarketApp.Infrastructure.Identity.AuthSession", b =>
+                {
+                    b.Navigation("RefreshTokens");
                 });
 #pragma warning restore 612, 618
         }
