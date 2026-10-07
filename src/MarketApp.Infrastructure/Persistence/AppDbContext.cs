@@ -19,6 +19,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<Category> Categories => Set<Category>();
 
     public DbSet<Product> Products => Set<Product>();
+
+    public DbSet<ProductPhoto> ProductPhotos => Set<ProductPhoto>();
     public DbSet<Branch> Branches => Set<Branch>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
     public DbSet<InventoryLocation> InventoryLocations=> Set<InventoryLocation>();

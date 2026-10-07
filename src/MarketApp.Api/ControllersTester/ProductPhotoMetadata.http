@@ -1,0 +1,14 @@
+@host = https://localhost:7126
+@token = PASTE_STAKEHOLDER_ACCESS_TOKEN
+@productId = 00000000-0000-0000-0000-000000000000
+
+### Existing product: expect 200 and a photos array
+GET {{host}}/api/products/{{productId}}
+Authorization: Bearer {{token}}
+
+### Product list: each item contains a photos array
+GET {{host}}/api/products?pageNumber=1&pageSize=20
+Authorization: Bearer {{token}}
+
+# For upload/download/order/delete, see ProductPhotos.http and docs/product-photos.md.
+# Only completed, non-deleted uploads appear in the photos collection.

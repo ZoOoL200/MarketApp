@@ -19,4 +19,8 @@ public class StockTransferLine
     public decimal Quantity { get; set; }
 
     public decimal BaselineUnitPrice { get; set; }
+
+    // Captured from the destination branch when the transfer is created.
+    // Null identifies a legacy transfer whose pricing must not be overwritten.
+    public int? BaselineRevisionAtCreation { get; set; }
 }

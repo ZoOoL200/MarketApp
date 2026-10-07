@@ -3,6 +3,7 @@ using System;
 using MarketApp.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MarketApp.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261004010454_ProtectTransferReceiptPricing")]
+    partial class ProtectTransferReceiptPricing
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -343,69 +346,6 @@ namespace MarketApp.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Products", (string)null);
-                });
-
-            modelBuilder.Entity("MarketApp.Domain.Entity.Main.ProductPhoto", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ContentHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long>("FileSizeBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<bool>("IsReady")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid>("ProductId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("StorageKey")
-                        .IsRequired()
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("StorageKey")
-                        .IsUnique()
-                        .HasDatabaseName("UX_ProductPhotos_StorageKey");
-
-                    b.HasIndex("IsReady", "DeletedAtUtc", "CreatedAtUtc");
-
-                    b.HasIndex("ProductId", "SortOrder", "Id");
-
-                    b.ToTable("ProductPhotos", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_ProductPhotos_ContentHash", "\"ContentHash\" ~ '^[0-9A-F]{64}$'");
-
-                            t.HasCheckConstraint("CK_ProductPhotos_ContentType", "\"ContentType\" IN ('image/jpeg', 'image/png', 'image/webp')");
-
-                            t.HasCheckConstraint("CK_ProductPhotos_FileSizeBytes", "\"FileSizeBytes\" > 0");
-
-                            t.HasCheckConstraint("CK_ProductPhotos_SortOrder", "\"SortOrder\" >= 0");
-
-                            t.HasCheckConstraint("CK_ProductPhotos_StorageKey", "length(btrim(\"StorageKey\")) > 0");
-                        });
                 });
 
             modelBuilder.Entity("MarketApp.Domain.Entity.Main.Supplier", b =>
@@ -1108,17 +1048,6 @@ namespace MarketApp.Infrastructure.Migrations
                     b.Navigation("Category");
                 });
 
-            modelBuilder.Entity("MarketApp.Domain.Entity.Main.ProductPhoto", b =>
-                {
-                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
-                        .WithMany("Photos")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Product");
-                });
-
             modelBuilder.Entity("MarketApp.Domain.Entity.Pricing.BranchProductPrice", b =>
                 {
                     b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
@@ -1294,11 +1223,6 @@ namespace MarketApp.Infrastructure.Migrations
             modelBuilder.Entity("MarketApp.Domain.Entity.Main.Category", b =>
                 {
                     b.Navigation("Products");
-                });
-
-            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Product", b =>
-                {
-                    b.Navigation("Photos");
                 });
 
             modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoice", b =>

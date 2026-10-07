@@ -14,4 +14,6 @@ public class Product
 
     // Navigation property
     public Category Category { get; set; } = null!;
+
+    public ICollection<ProductPhoto> Photos { get; set; } = new List<ProductPhoto>();
 }

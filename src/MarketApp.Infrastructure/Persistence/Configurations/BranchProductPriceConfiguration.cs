@@ -29,6 +29,13 @@ public class BranchProductPriceConfiguration
             table.HasCheckConstraint(
                 "CK_BranchProductPrices_Revision",
                 "\"Revision\" > 0");
+
+            table.HasCheckConstraint(
+                "CK_BranchProductPrices_BaselineRevision",
+                "\"BaselineRevision\" >= 0 AND " +
+                "\"BaselineRevision\" <= \"Revision\" AND " +
+                "((\"BaselineUnitPrice\" IS NULL AND \"BaselineRevision\" = 0) OR " +
+                "(\"BaselineUnitPrice\" IS NOT NULL AND \"BaselineRevision\" > 0))");
         });
 
         builder.HasKey(p => p.Id);

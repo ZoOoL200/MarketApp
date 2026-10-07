@@ -1,0 +1,26 @@
+@host = https://localhost:7126
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImUyNmI3YTE3LWZlMTgtNGRlMi1hYzk1LTZlNGJlMzUxMTkzZSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhaG1lZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFobWVkcmFiaWVzYWlkQGdtYWlsLmNvbSIsIkFzcE5ldC5JZGVudGl0eS5TZWN1cml0eVN0YW1wIjoiUlRNT1hYTkRRV1BJR0c3N0FDWjVVUEpEUUg0U1hIS0EiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJTdGFrZWhvbGRlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiOGFhMDZiNzgtOTQ2YS00YWJhLWExNWQtYWM5OTAwMDE2YmE5Iiwic3ViIjoiZTI2YjdhMTctZmUxOC00ZGUyLWFjOTUtNmU0YmUzNTExOTNlIiwianRpIjoiMGRmMDIxYjA2ZDcwNDRmMThhMWU4NDYwY2M1NzNmYjEiLCJpYXQiOjE3OTExMDg4NDcsIm5iZiI6MTc5MTEwODg0NywiZXhwIjoxNzkxMTEwNjQ3LCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ.HBCFuytS5qQeCle23O-rcs_SGFHbRb6iV8DouSklYuE
+@productId = ca6f2e9a-24b5-4194-bb2a-66ce34b6a469
+@photoId = b4eb3008-97e4-4533-bbc6-0cb4adfbdd62
+
+### List ready photos in display order
+GET {{host}}/api/products/{{productId}}/photos
+Authorization: Bearer {{token}}
+
+### Download a photo with your current access token
+GET {{host}}/api/products/{{productId}}/photos/{{photoId}}/content
+Authorization: Bearer {{token}}
+
+### Change order as stakeholder
+PUT {{host}}/api/products/{{productId}}/photos/{{photoId}}/order
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "sortOrder": 0 }
+
+### Delete as stakeholder; repeat is safe
+DELETE {{host}}/api/products/{{productId}}/photos/{{photoId}}
+Authorization: Bearer {{token}}
+
+# Upload is multipart/form-data. See docs/product-photos.md for curl.exe examples.
+# Use Seller / BranchManager tokens to confirm reads succeed and writes return 403.

@@ -259,6 +259,10 @@ public class BranchProductPriceService : IBranchProductPriceService
         }
 
         price.Revision = currentRevision + 1;
+        if (updateBaseline)
+        {
+            price.BaselineRevision = price.Revision;
+        }
         price.UpdatedAtUtc = now;
 
         var history = new BranchProductPriceHistory

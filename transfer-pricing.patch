@@ -1,0 +1,2466 @@
+diff --git a/MarketApp.sln b/MarketApp.sln
+index 891fda7..b066654 100644
+--- a/MarketApp.sln
++++ b/MarketApp.sln
+@@ -13,6 +13,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarketApp.Infrastructure",
+ EndProject
+ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarketApp.Api", "src\MarketApp.Api\MarketApp.Api.csproj", "{75301C54-F8C6-4CF5-889D-46F28CE22E35}"
+ EndProject
++Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
++EndProject
++Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarketApp.Application.Tests", "tests\MarketApp.Application.Tests\MarketApp.Application.Tests.csproj", "{0C616C26-6E1A-4F57-8FB3-5A7897F2847D}"
++EndProject
+ Global
+ 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+ 		Debug|Any CPU = Debug|Any CPU
+@@ -71,6 +75,18 @@ Global
+ 		{75301C54-F8C6-4CF5-889D-46F28CE22E35}.Release|x64.Build.0 = Release|Any CPU
+ 		{75301C54-F8C6-4CF5-889D-46F28CE22E35}.Release|x86.ActiveCfg = Release|Any CPU
+ 		{75301C54-F8C6-4CF5-889D-46F28CE22E35}.Release|x86.Build.0 = Release|Any CPU
++		{0C616C26-6E1A-4F57-8FB3-5A7897F2847D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
++		{0C616C26-6E1A-4F57-8FB3-5A7897F2847D}.Debug|Any CPU.Build.0 = Debug|Any CPU
++		{0C616C26-6E1A-4F57-8FB3-5A7897F2847D}.Debug|x64.ActiveCfg = Debug|Any CPU
++		{0C616C26-6E1A-4F57-8FB3-5A7897F2847D}.Debug|x64.Build.0 = Debug|Any CPU
++		{0C616C26-6E1A-4F57-8FB3-5A7897F2847D}.Debug|x86.ActiveCfg = Debug|Any CPU
++		{0C616C26-6E1A-4F57-8FB3-5A7897F2847D}.Debug|x86.Build.0 = Debug|Any CPU
++		{0C616C26-6E1A-4F57-8FB3-5A7897F2847D}.Release|Any CPU.ActiveCfg = Release|Any CPU
++		{0C616C26-6E1A-4F57-8FB3-5A7897F2847D}.Release|Any CPU.Build.0 = Release|Any CPU
++		{0C616C26-6E1A-4F57-8FB3-5A7897F2847D}.Release|x64.ActiveCfg = Release|Any CPU
++		{0C616C26-6E1A-4F57-8FB3-5A7897F2847D}.Release|x64.Build.0 = Release|Any CPU
++		{0C616C26-6E1A-4F57-8FB3-5A7897F2847D}.Release|x86.ActiveCfg = Release|Any CPU
++		{0C616C26-6E1A-4F57-8FB3-5A7897F2847D}.Release|x86.Build.0 = Release|Any CPU
+ 	EndGlobalSection
+ 	GlobalSection(SolutionProperties) = preSolution
+ 		HideSolutionNode = FALSE
+@@ -80,6 +96,7 @@ Global
+ 		{B4BAEB74-AF85-4953-BF9C-63887447454A} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+ 		{311E7CD3-9C94-43B6-BF27-8A38FDA9ED06} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+ 		{75301C54-F8C6-4CF5-889D-46F28CE22E35} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
++		{0C616C26-6E1A-4F57-8FB3-5A7897F2847D} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+ 	EndGlobalSection
+ 	GlobalSection(ExtensibilityGlobals) = postSolution
+ 		SolutionGuid = {1D1BC9E6-009C-4CF2-B2CA-838C12DCD179}
+diff --git a/docs/transfer-receipt-pricing.md b/docs/transfer-receipt-pricing.md
+new file mode 100644
+index 0000000..3ad9829
+--- /dev/null
++++ b/docs/transfer-receipt-pricing.md
+@@ -0,0 +1,108 @@
++# Transfer receipt pricing
++
++This change is based on GitHub commit `21e6e50` and implements the agreed rule:
++if a transfer carries baseline 100 and the branch baseline changes to 150 after
++the transfer is created, receipt adds the stock and keeps 150. The transfer line
++continues to show its original 100.
++
++## Apply the change
++
++Download `transfer-pricing.patch` into your local repository root (beside
++`MarketApp.sln`). In the Visual Studio terminal, run:
++
++```powershell
++git apply --check transfer-pricing.patch
++git apply transfer-pricing.patch
++dotnet build MarketApp.sln
++dotnet test tests/MarketApp.Application.Tests/MarketApp.Application.Tests.csproj
++```
++
++If the patch check reports a conflict, stop and retain your local edits; the
++patch was prepared against the commit above. No remote branch was changed.
++
++The migration is already included. **Do not run Add-Migration for this change.**
++Stop the running API, then run this in Visual Studio's Package Manager Console:
++
++```powershell
++Update-Database -Project MarketApp.Infrastructure -StartupProject MarketApp.Api -Context AppDbContext -Args '--environment Development'
++```
++
++Restart the API using your existing connection string and JWT user secrets.
++Open `src/MarketApp.Api/ControllersTester/TransferReceiptPricing.http`, fill in
++the token and IDs, and follow the numbered requests. Keep credentials local.
++
++## Behavior
++
++| Situation | Result on receipt |
++| --- | --- |
++| Baseline has not changed since creation | Apply the transfer baseline to current branch pricing. |
++| Baseline changed after creation | Keep the current baseline, even if someone later changed it back. |
++| Only minimum selling price changed | Apply the transfer baseline; preserve the current minimum. |
++| No branch price exists | Create baseline pricing; leave minimum selling price unset. |
++| Minimum exists but baseline is unset | Set baseline; preserve minimum. |
++| Transfer baseline equals current baseline | Receive stock without an extra price revision or history entry. |
++| Transfer was already received | Return success without applying stock or pricing again. |
++| Transfer was created before this migration | Receive stock normally; do not automatically change pricing. |
++| Repeated product lines use one baseline | Sum their stock quantities; create at most one price history entry for the product. |
++| Repeated product lines use different baselines | Reject creation with HTTP 400. |
++
++All new transfers capture the destination product's baseline revision at creation.
++`BaselineRevision` stores the overall revision of the latest actual baseline
++change, so minimum-only changes leave it unchanged. It is zero until a baseline
++has been configured. The snapshot is internal and cannot be supplied by clients.
++
++The migration backfills existing price rows from their price history, falling
++back to the current revision where no baseline history exists. Old transfers
++retain a null snapshot: their original baseline revision cannot be reliably
++reconstructed. If an old transfer arrives and the branch has no baseline yet,
++the stakeholder must set it through the existing baseline endpoint.
++
++Every actual receipt price change records `TransferReceipt`, the original and
++new baseline, the unchanged minimum, the transfer line, and the authenticated
++receiving user's ID. For repeated product lines, the first line identifies this
++single product price change. Preserving a newer price creates no artificial
++price-change event; the transfer itself retains its original line prices.
++
++The manager's minimum is never calculated automatically. Existing seller DTOs
++remain unchanged and do not expose the baseline or its internal revision.
++
++If multiple transfers captured the same baseline revision, the first receipt
++that changes the baseline makes the others stale. A later transfer created
++after that update can change it again. This follows the agreed rule to preserve
++any baseline change made after a transfer was created.
++
++## Persistence and concurrency
++
++Receipt prepares all balance and pricing changes before mutating tracked
++entities. It saves transfer status, movements, balances, prices, and history
++through one UnitOfWork save. Existing PostgreSQL `xmin` concurrency checks and
++unique indexes remain in place. A concurrent conflicting write returns HTTP 409;
++refresh and retry the receipt so it can evaluate the newest baseline revision.
++
++Shipping and physical returns continue to affect stock only.
++
++## Verification
++
++The API build and 13 application tests passed in the development workspace.
++The full solution also builds with zero warnings and errors. EF reports no
++pending model changes, and the migration SQL was generated and inspected.
++The tests cover the 100-to-150 rule, minimum-only changes, changing a baseline
++and changing it back, missing/zero baselines, repeated receipt, repeated product
++lines, conflicting prices, legacy transfers, unchanged prices, missing actor,
++and validation failures before mutation.
++
++These are application tests using repository fakes. They do not claim to verify
++PostgreSQL transaction rollback or concurrent database requests. The migration
++has not been applied to your database.
++
++After the numbered HTTP scenario, also check:
++
++1. Create another transfer with baseline 120, do not change the baseline, receive
++   it, and verify baseline 120 plus one `TransferReceipt` history entry.
++2. Create a transfer with a different baseline, change only the minimum, receive,
++   and verify the transfer baseline and the manager's new minimum both remain.
++3. Repeat either successful receipt and verify balances and price history do not
++   grow again.
++
++Product photos are the next feature after you verify this step. The full API
++reference and user documentation remain planned for API completion.
+diff --git a/src/MarketApp.Api/Controllers/StockTransfersController.cs b/src/MarketApp.Api/Controllers/StockTransfersController.cs
+index 90b0562..52b46e6 100644
+--- a/src/MarketApp.Api/Controllers/StockTransfersController.cs
++++ b/src/MarketApp.Api/Controllers/StockTransfersController.cs
+@@ -2,6 +2,7 @@
+ using MarketApp.Application.DTOs.StockTransfers;
+ using MarketApp.Application.Interfaces.Services;
+ using Microsoft.AspNetCore.Mvc;
++using System.Security.Claims;
+ 
+ namespace MarketApp.Api.Controllers;
+ 
+@@ -71,8 +72,15 @@ public class StockTransfersController : ControllerBase
+         Guid id,
+         CancellationToken cancellationToken)
+     {
++        if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier),
++                out var actorUserId) || actorUserId == Guid.Empty)
++        {
++            return Unauthorized();
++        }
++
+         return ToActionResult(await _transferService.ReceiveAsync(
+             id,
++            actorUserId,
+             cancellationToken));
+     }
+ 
+@@ -143,4 +151,4 @@ public class StockTransfersController : ControllerBase
+                 id,
+                 cancellationToken));
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/src/MarketApp.Api/ControllersTester/TransferReceiptPricing.http b/src/MarketApp.Api/ControllersTester/TransferReceiptPricing.http
+new file mode 100644
+index 0000000..50ad5b0
+--- /dev/null
++++ b/src/MarketApp.Api/ControllersTester/TransferReceiptPricing.http
+@@ -0,0 +1,87 @@
++@host = https://localhost:7126
++@token = PASTE_STAKEHOLDER_ACCESS_TOKEN
++@branchId = 00000000-0000-0000-0000-000000000000
++@productId = 00000000-0000-0000-0000-000000000000
++@sourceLocationId = 00000000-0000-0000-0000-000000000000
++@destinationLocationId = 00000000-0000-0000-0000-000000000000
++@transferId = 00000000-0000-0000-0000-000000000000
++@expectedRevision = 0
++
++# Use active references, with at least 5 units in the central source location.
++# destinationLocationId must belong to branchId.
++# Before EACH price PUT, set expectedRevision from the current GET response.
++# Use 0 only when no price record exists (404).
++
++### 1. Read existing pricing and copy revision to expectedRevision
++GET {{host}}/api/branches/{{branchId}}/product-prices/{{productId}}
++Authorization: Bearer {{token}}
++
++### 2. Set initial baseline to 100
++PUT {{host}}/api/branches/{{branchId}}/product-prices/{{productId}}/baseline
++Authorization: Bearer {{token}}
++Content-Type: application/json
++
++{
++  "price": 100,
++  "expectedRevision": {{expectedRevision}},
++  "reason": "Transfer receipt pricing test: initial baseline"
++}
++
++### 3. Create a NEW transfer after applying the migration; copy its id to transferId
++POST {{host}}/api/stock-transfers
++Authorization: Bearer {{token}}
++Content-Type: application/json
++
++{
++  "sourceLocationId": "{{sourceLocationId}}",
++  "destinationLocationId": "{{destinationLocationId}}",
++  "notes": "Keep newer baseline on receipt",
++  "lines": [
++    {
++      "productId": "{{productId}}",
++      "quantity": 5,
++      "baselineUnitPrice": 100
++    }
++  ]
++}
++
++### 4. Ship
++POST {{host}}/api/stock-transfers/{{transferId}}/ship
++Authorization: Bearer {{token}}
++
++### 5. Set newer baseline to 150 (refresh expectedRevision first)
++PUT {{host}}/api/branches/{{branchId}}/product-prices/{{productId}}/baseline
++Authorization: Bearer {{token}}
++Content-Type: application/json
++
++{
++  "price": 150,
++  "expectedRevision": {{expectedRevision}},
++  "reason": "Inflation adjustment while transfer is in transit"
++}
++
++### 6. Record destination quantity before receipt
++GET {{host}}/api/stock/balances?inventoryLocationId={{destinationLocationId}}&productId={{productId}}
++Authorization: Bearer {{token}}
++
++### 7. Receive: 200, status Received; transfer line still has baseline 100
++POST {{host}}/api/stock-transfers/{{transferId}}/receive
++Authorization: Bearer {{token}}
++
++### 8. Must still be 150; minimumSellingPrice must be unchanged
++GET {{host}}/api/branches/{{branchId}}/product-prices/{{productId}}
++Authorization: Bearer {{token}}
++
++### 9. Destination quantity must have increased by exactly 5
++GET {{host}}/api/stock/balances?inventoryLocationId={{destinationLocationId}}&productId={{productId}}
++Authorization: Bearer {{token}}
++
++### 10. Repeat receipt: 200, no extra stock or price history
++POST {{host}}/api/stock-transfers/{{transferId}}/receive
++Authorization: Bearer {{token}}
++
++### 11. The manual change to 150 remains; no TransferReceipt price change for this transfer
++GET {{host}}/api/branches/{{branchId}}/product-prices/{{productId}}/history
++Authorization: Bearer {{token}}
++
++# Additional scenarios are described in docs/transfer-receipt-pricing.md.
+diff --git a/src/MarketApp.Application/Interfaces/BranchProductPriceService.cs b/src/MarketApp.Application/Interfaces/BranchProductPriceService.cs
+index 28425cc..48329e9 100644
+--- a/src/MarketApp.Application/Interfaces/BranchProductPriceService.cs
++++ b/src/MarketApp.Application/Interfaces/BranchProductPriceService.cs
+@@ -259,6 +259,10 @@ public class BranchProductPriceService : IBranchProductPriceService
+         }
+ 
+         price.Revision = currentRevision + 1;
++        if (updateBaseline)
++        {
++            price.BaselineRevision = price.Revision;
++        }
+         price.UpdatedAtUtc = now;
+ 
+         var history = new BranchProductPriceHistory
+@@ -316,4 +320,4 @@ public class BranchProductPriceService : IBranchProductPriceService
+     {
+         return new(status, Error: error);
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/src/MarketApp.Application/Interfaces/Services/IStockTransferService.cs b/src/MarketApp.Application/Interfaces/Services/IStockTransferService.cs
+index 24e0a9c..c0465a0 100644
+--- a/src/MarketApp.Application/Interfaces/Services/IStockTransferService.cs
++++ b/src/MarketApp.Application/Interfaces/Services/IStockTransferService.cs
+@@ -19,6 +19,7 @@ public interface IStockTransferService
+ 
+     Task<StockTransferResult> ReceiveAsync(
+         Guid id,
++        Guid actorUserId,
+         CancellationToken cancellationToken = default);
+ 
+     Task<StockTransferResult> CancelAsync(
+@@ -32,4 +33,4 @@ public interface IStockTransferService
+     Task<StockTransferResult> ConfirmReturnAsync(
+         Guid id,
+         CancellationToken cancellationToken = default);
+-}
+\ No newline at end of file
++}
+diff --git a/src/MarketApp.Application/Services/StockTransferService.cs b/src/MarketApp.Application/Services/StockTransferService.cs
+index b6d8d00..a71149f 100644
+--- a/src/MarketApp.Application/Services/StockTransferService.cs
++++ b/src/MarketApp.Application/Services/StockTransferService.cs
+@@ -4,6 +4,7 @@ using MarketApp.Application.DTOs.StockTransfers;
+ using MarketApp.Application.Interfaces.Services;
+ using MarketApp.Application.Persistence.Contracts;
+ using MarketApp.Domain.Entity.Inventory;
++using MarketApp.Domain.Entity.Pricing;
+ using MarketApp.Domain.Enums;
+ 
+ namespace MarketApp.Application.Services;
+@@ -73,6 +74,22 @@ public class StockTransferService : IStockTransferService
+             return referenceError;
+         }
+ 
++        var destination = await _unitOfWork.InventoryLocations.FindAsync(
++            predicate: l => l.Id == transfer.DestinationLocationId,
++            cancellationToken: cancellationToken);
++
++        var branchId = destination!.BranchId!.Value;
++        var productIds = transfer.Lines.Select(l => l.ProductId).Distinct().ToArray();
++        var prices = await _unitOfWork.BranchProductPrices.GetAllAsync(
++            predicate: p => p.BranchId == branchId && productIds.Contains(p.ProductId),
++            cancellationToken: cancellationToken);
++        var baselineRevisions = prices.ToDictionary(p => p.ProductId, p => p.BaselineRevision);
++
++        foreach (var line in transfer.Lines)
++        {
++            line.BaselineRevisionAtCreation = baselineRevisions.GetValueOrDefault(line.ProductId);
++        }
++
+         await _unitOfWork.StockTransfers.AddAsync(
+             transfer,
+             cancellationToken);
+@@ -101,22 +118,33 @@ public class StockTransferService : IStockTransferService
+         return ExecuteStockActionAsync(
+             id,
+             receiving: false,
++            actorUserId: null,
+             cancellationToken: cancellationToken);
+     }
+ 
+     public Task<StockTransferResult> ReceiveAsync(
+         Guid id,
++        Guid actorUserId,
+         CancellationToken cancellationToken = default)
+     {
++        if (actorUserId == Guid.Empty)
++        {
++            return Task.FromResult(Failure(
++                StockTransferResultStatus.InvalidRequest,
++                "An authenticated user ID is required to receive a transfer."));
++        }
++
+         return ExecuteStockActionAsync(
+             id,
+             receiving: true,
++            actorUserId: actorUserId,
+             cancellationToken: cancellationToken);
+     }
+ 
+     private async Task<StockTransferResult> ExecuteStockActionAsync(
+         Guid id,
+         bool receiving,
++        Guid? actorUserId,
+         CancellationToken cancellationToken)
+     {
+         var transfer = await _unitOfWork.StockTransfers.FindAsync(
+@@ -230,6 +258,19 @@ public class StockTransferService : IStockTransferService
+             changes.Add((balance, quantity, isNew));
+         }
+ 
++        // Prepare every price change before mutating any tracked entity.
++        var priceChanges = new List<ReceiptPriceChange>();
++        if (receiving)
++        {
++            var prepared = await PrepareReceiptPricesAsync(transfer, cancellationToken);
++            if (prepared.Error is not null)
++            {
++                return prepared.Error;
++            }
++
++            priceChanges = prepared.Changes;
++        }
++
+         foreach (var change in changes)
+         {
+             change.Balance.Quantity += receiving
+@@ -254,6 +295,47 @@ public class StockTransferService : IStockTransferService
+             now = shippedAt;
+         }
+ 
++        foreach (var change in priceChanges)
++        {
++            if (now < change.Price.UpdatedAtUtc)
++            {
++                now = change.Price.UpdatedAtUtc;
++            }
++        }
++
++        foreach (var change in priceChanges)
++        {
++            var price = change.Price;
++            var oldBaseline = price.BaselineUnitPrice;
++            price.BaselineUnitPrice = change.Line.BaselineUnitPrice;
++            price.Revision++;
++            price.BaselineRevision = price.Revision;
++            price.UpdatedAtUtc = now;
++
++            if (change.IsNew)
++            {
++                await _unitOfWork.BranchProductPrices.AddAsync(price, cancellationToken);
++            }
++
++            await _unitOfWork.BranchProductPriceHistories.AddAsync(
++                new BranchProductPriceHistory
++                {
++                    BranchProductPriceId = price.Id,
++                    BranchProductPrice = price,
++                    Revision = price.Revision,
++                    OldBaselineUnitPrice = oldBaseline,
++                    NewBaselineUnitPrice = price.BaselineUnitPrice,
++                    OldMinimumSellingPrice = price.MinimumSellingPrice,
++                    NewMinimumSellingPrice = price.MinimumSellingPrice,
++                    ChangeType = BranchPriceChangeType.TransferReceipt,
++                    Reason = $"Received transfer {transfer.Number}.",
++                    ChangedAtUtc = now,
++                    ChangedByUserId = actorUserId,
++                    StockTransferLineId = change.Line.Id
++                },
++                cancellationToken);
++        }
++
+         foreach (var line in transfer.Lines)
+         {
+             await _unitOfWork.StockMovements.AddAsync(
+@@ -286,12 +368,89 @@ public class StockTransferService : IStockTransferService
+             transfer.ShippedAtUtc = now;
+         }
+ 
+-        // Status, movements, and balances are saved together.
++        // Status, movements, balances, pricing, and history share one transaction.
+         await _unitOfWork.SaveChangesAsync(cancellationToken);
+ 
+         return Success(transfer);
+     }
+ 
++    private sealed record ReceiptPriceChange(
++        BranchProductPrice Price,
++        StockTransferLine Line,
++        bool IsNew);
++
++    private async Task<(List<ReceiptPriceChange> Changes, StockTransferResult? Error)>
++        PrepareReceiptPricesAsync(StockTransfer transfer, CancellationToken cancellationToken)
++    {
++        var changes = new List<ReceiptPriceChange>();
++        var destination = await _unitOfWork.InventoryLocations.FindAsync(
++            predicate: l => l.Id == transfer.DestinationLocationId,
++            cancellationToken: cancellationToken);
++
++        if (destination?.BranchId is not Guid branchId)
++        {
++            return (changes, Failure(StockTransferResultStatus.Conflict,
++                "The destination must belong to a branch to receive this transfer."));
++        }
++
++        var productIds = transfer.Lines.Select(l => l.ProductId).Distinct().ToArray();
++        var prices = await _unitOfWork.BranchProductPrices.GetAllAsync(
++            predicate: p => p.BranchId == branchId && productIds.Contains(p.ProductId),
++            trackChanges: true,
++            cancellationToken: cancellationToken);
++        var pricesByProduct = prices.ToDictionary(p => p.ProductId);
++
++        foreach (var group in transfer.Lines.GroupBy(l => l.ProductId))
++        {
++            // No trustworthy creation snapshot exists for pre-migration transfers.
++            // Receive their stock normally and leave current pricing untouched.
++            if (group.Any(l => !l.BaselineRevisionAtCreation.HasValue))
++            {
++                continue;
++            }
++
++            var line = group.OrderBy(l => l.LineNumber).First();
++            if (group.Any(l => l.BaselineUnitPrice != line.BaselineUnitPrice ||
++                               l.BaselineRevisionAtCreation != line.BaselineRevisionAtCreation))
++            {
++                return (changes, Failure(StockTransferResultStatus.Conflict,
++                    $"Transfer lines for product '{group.Key}' have inconsistent pricing."));
++            }
++
++            pricesByProduct.TryGetValue(group.Key, out var price);
++
++            // Even changing a baseline and later changing it back makes this stale.
++            if ((price?.BaselineRevision ?? 0) != line.BaselineRevisionAtCreation)
++            {
++                continue;
++            }
++
++            // No value change means no additional revision or history entry.
++            if (price?.BaselineUnitPrice == line.BaselineUnitPrice)
++            {
++                continue;
++            }
++
++            if (price?.Revision == int.MaxValue)
++            {
++                return (changes, Failure(StockTransferResultStatus.Conflict,
++                    $"The maximum price revision has been reached for product '{group.Key}'."));
++            }
++
++            var isNew = price is null;
++            price ??= new BranchProductPrice
++            {
++                BranchId = branchId,
++                ProductId = group.Key,
++                Revision = 0
++            };
++
++            changes.Add(new ReceiptPriceChange(price, line, isNew));
++        }
++
++        return (changes, null);
++    }
++
+     public async Task<StockTransferResult> CancelAsync(
+         Guid id,
+         CancellationToken cancellationToken = default)
+@@ -427,6 +586,12 @@ public class StockTransferService : IStockTransferService
+             }
+         }
+ 
++        if (request.Lines.GroupBy(l => l.ProductId)
++            .Any(group => group.Select(l => l.BaselineUnitPrice).Distinct().Count() > 1))
++        {
++            return "All lines for the same product must use the same baseline price.";
++        }
++
+         return null;
+     }
+ 
+@@ -650,4 +815,4 @@ public class StockTransferService : IStockTransferService
+     {
+         return new(status, Error: error);
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/src/MarketApp.Domain/Entity/Inventory/StockTransferLine.cs b/src/MarketApp.Domain/Entity/Inventory/StockTransferLine.cs
+index 5664092..167d634 100644
+--- a/src/MarketApp.Domain/Entity/Inventory/StockTransferLine.cs
++++ b/src/MarketApp.Domain/Entity/Inventory/StockTransferLine.cs
+@@ -19,4 +19,8 @@ public class StockTransferLine
+     public decimal Quantity { get; set; }
+ 
+     public decimal BaselineUnitPrice { get; set; }
+-}
+\ No newline at end of file
++
++    // Captured from the destination branch when the transfer is created.
++    // Null identifies a legacy transfer whose pricing must not be overwritten.
++    public int? BaselineRevisionAtCreation { get; set; }
++}
+diff --git a/src/MarketApp.Domain/Entity/Pricing/BranchProductPrice.cs b/src/MarketApp.Domain/Entity/Pricing/BranchProductPrice.cs
+index 8117991..f180f9f 100644
+--- a/src/MarketApp.Domain/Entity/Pricing/BranchProductPrice.cs
++++ b/src/MarketApp.Domain/Entity/Pricing/BranchProductPrice.cs
+@@ -20,7 +20,11 @@ public class BranchProductPrice
+ 
+     public int Revision { get; set; } = 1;
+ 
++    // The general revision at the last baseline change; zero means unset.
++    // Minimum-selling-price changes do not change this value.
++    public int BaselineRevision { get; set; }
++
+     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
+ 
+     public uint Version { get; set; }
+-}
+\ No newline at end of file
++}
+diff --git a/src/MarketApp.Infrastructure/Migrations/20261004010454_ProtectTransferReceiptPricing.Designer.cs b/src/MarketApp.Infrastructure/Migrations/20261004010454_ProtectTransferReceiptPricing.Designer.cs
+new file mode 100644
+index 0000000..3959a51
+--- /dev/null
++++ b/src/MarketApp.Infrastructure/Migrations/20261004010454_ProtectTransferReceiptPricing.Designer.cs
+@@ -0,0 +1,1245 @@
++﻿// <auto-generated />
++using System;
++using MarketApp.Infrastructure.Persistence;
++using Microsoft.EntityFrameworkCore;
++using Microsoft.EntityFrameworkCore.Infrastructure;
++using Microsoft.EntityFrameworkCore.Migrations;
++using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
++using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
++
++#nullable disable
++
++namespace MarketApp.Infrastructure.Migrations
++{
++    [DbContext(typeof(AppDbContext))]
++    [Migration("20261004010454_ProtectTransferReceiptPricing")]
++    partial class ProtectTransferReceiptPricing
++    {
++        /// <inheritdoc />
++        protected override void BuildTargetModel(ModelBuilder modelBuilder)
++        {
++#pragma warning disable 612, 618
++            modelBuilder
++                .HasAnnotation("ProductVersion", "10.0.12")
++                .HasAnnotation("Relational:MaxIdentifierLength", 63);
++
++            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockBalance", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("InventoryLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("Quantity")
++                        .HasPrecision(18, 3)
++                        .HasColumnType("numeric(18,3)");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("InventoryLocationId");
++
++                    b.HasIndex("ProductId", "InventoryLocationId")
++                        .IsUnique()
++                        .HasDatabaseName("UX_StockBalances_Product_Location");
++
++                    b.ToTable("StockBalances", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_StockBalances_Quantity_NonNegative", "\"Quantity\" >= 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockMovement", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("InventoryLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("MovementType")
++                        .HasColumnType("integer");
++
++                    b.Property<DateTime>("OccurredAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid?>("PurchaseInvoiceLineId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("QuantityChange")
++                        .HasPrecision(18, 3)
++                        .HasColumnType("numeric(18,3)");
++
++                    b.Property<Guid?>("StockTransferLineId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("InventoryLocationId");
++
++                    b.HasIndex("PurchaseInvoiceLineId")
++                        .IsUnique()
++                        .HasDatabaseName("UX_StockMovements_PurchaseInvoiceLine")
++                        .HasFilter("\"PurchaseInvoiceLineId\" IS NOT NULL");
++
++                    b.HasIndex("StockTransferLineId", "MovementType")
++                        .IsUnique()
++                        .HasDatabaseName("UX_StockMovements_TransferLine_Type")
++                        .HasFilter("\"StockTransferLineId\" IS NOT NULL");
++
++                    b.HasIndex("ProductId", "InventoryLocationId", "OccurredAtUtc", "Id")
++                        .HasDatabaseName("IX_StockMovements_Product_Location_History");
++
++                    b.ToTable("StockMovements", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_StockMovements_Source", "(\"MovementType\" = 1 AND \"PurchaseInvoiceLineId\" IS NOT NULL AND \"StockTransferLineId\" IS NULL) OR (\"MovementType\" IN (2, 3, 4) AND \"PurchaseInvoiceLineId\" IS NULL AND \"StockTransferLineId\" IS NOT NULL)");
++
++                            t.HasCheckConstraint("CK_StockMovements_TypeAndQuantity", "(\"MovementType\" IN (1, 3, 4) AND \"QuantityChange\" > 0) OR (\"MovementType\" = 2 AND \"QuantityChange\" < 0)");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockTransfer", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("DestinationLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Notes")
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<string>("Number")
++                        .IsRequired()
++                        .HasMaxLength(40)
++                        .HasColumnType("character varying(40)");
++
++                    b.Property<DateTime?>("ReceivedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("ReturnReason")
++                        .HasMaxLength(500)
++                        .HasColumnType("character varying(500)");
++
++                    b.Property<DateTime?>("ReturnRequestedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime?>("ReturnedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime?>("ShippedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("SourceLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("Status")
++                        .HasColumnType("integer");
++
++                    b.Property<DateTime>("UpdatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("DestinationLocationId");
++
++                    b.HasIndex("Number")
++                        .IsUnique();
++
++                    b.HasIndex("SourceLocationId");
++
++                    b.ToTable("StockTransfers", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_StockTransfers_DifferentLocations", "\"SourceLocationId\" <> \"DestinationLocationId\"");
++
++                            t.HasCheckConstraint("CK_StockTransfers_ReturnDetails", "(\"Status\" IN (1, 2, 3, 4) AND \"ReturnRequestedAtUtc\" IS NULL AND \"ReturnedAtUtc\" IS NULL AND \"ReturnReason\" IS NULL) OR (\"Status\" = 5 AND \"ReturnRequestedAtUtc\" IS NOT NULL AND \"ReturnRequestedAtUtc\" >= \"ShippedAtUtc\" AND \"ReturnedAtUtc\" IS NULL AND \"ReturnReason\" IS NOT NULL AND length(btrim(\"ReturnReason\")) > 0) OR (\"Status\" = 6 AND \"ReturnRequestedAtUtc\" IS NOT NULL AND \"ReturnRequestedAtUtc\" >= \"ShippedAtUtc\" AND \"ReturnedAtUtc\" IS NOT NULL AND \"ReturnedAtUtc\" >= \"ReturnRequestedAtUtc\" AND \"ReturnReason\" IS NOT NULL AND length(btrim(\"ReturnReason\")) > 0)");
++
++                            t.HasCheckConstraint("CK_StockTransfers_Status", "\"Status\" IN (1, 2, 3, 4, 5, 6)");
++
++                            t.HasCheckConstraint("CK_StockTransfers_StatusTimestamps", "(\"Status\" IN (1, 4) AND \"ShippedAtUtc\" IS NULL AND \"ReceivedAtUtc\" IS NULL) OR (\"Status\" IN (2, 5, 6) AND \"ShippedAtUtc\" IS NOT NULL AND \"ReceivedAtUtc\" IS NULL) OR (\"Status\" = 3 AND \"ShippedAtUtc\" IS NOT NULL AND \"ReceivedAtUtc\" IS NOT NULL AND \"ReceivedAtUtc\" >= \"ShippedAtUtc\")");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockTransferLine", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<int?>("BaselineRevisionAtCreation")
++                        .HasColumnType("integer");
++
++                    b.Property<decimal>("BaselineUnitPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<int>("LineNumber")
++                        .HasColumnType("integer");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("Quantity")
++                        .HasPrecision(18, 3)
++                        .HasColumnType("numeric(18,3)");
++
++                    b.Property<Guid>("StockTransferId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("ProductId");
++
++                    b.HasIndex("StockTransferId", "LineNumber")
++                        .IsUnique()
++                        .HasDatabaseName("UX_StockTransferLines_Transfer_Line");
++
++                    b.ToTable("StockTransferLines", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_StockTransferLines_BaselineRevisionAtCreation", "\"BaselineRevisionAtCreation\" IS NULL OR \"BaselineRevisionAtCreation\" >= 0");
++
++                            t.HasCheckConstraint("CK_StockTransferLines_BaselineUnitPrice", "\"BaselineUnitPrice\" >= 0");
++
++                            t.HasCheckConstraint("CK_StockTransferLines_LineNumber", "\"LineNumber\" > 0");
++
++                            t.HasCheckConstraint("CK_StockTransferLines_Quantity", "\"Quantity\" > 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Branch", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Address")
++                        .HasMaxLength(300)
++                        .HasColumnType("character varying(300)");
++
++                    b.Property<string>("Code")
++                        .IsRequired()
++                        .HasMaxLength(32)
++                        .HasColumnType("character varying(32)");
++
++                    b.Property<bool>("IsActive")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("Name")
++                        .IsRequired()
++                        .HasMaxLength(100)
++                        .HasColumnType("character varying(100)");
++
++                    b.Property<string>("Phone")
++                        .HasMaxLength(30)
++                        .HasColumnType("character varying(30)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("Code")
++                        .IsUnique();
++
++                    b.ToTable("Branches", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Category", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Name")
++                        .IsRequired()
++                        .HasMaxLength(100)
++                        .HasColumnType("character varying(100)");
++
++                    b.HasKey("Id");
++
++                    b.ToTable("Categories", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.InventoryLocation", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid?>("BranchId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Code")
++                        .IsRequired()
++                        .HasMaxLength(32)
++                        .HasColumnType("character varying(32)");
++
++                    b.Property<bool>("IsActive")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("Name")
++                        .IsRequired()
++                        .HasMaxLength(100)
++                        .HasColumnType("character varying(100)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("BranchId");
++
++                    b.HasIndex("Code")
++                        .IsUnique();
++
++                    b.ToTable("InventoryLocations", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Product", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("CategoryId")
++                        .HasColumnType("uuid");
++
++                    b.Property<bool>("IsActive")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("Name")
++                        .IsRequired()
++                        .HasMaxLength(200)
++                        .HasColumnType("character varying(200)");
++
++                    b.Property<string>("Sku")
++                        .IsRequired()
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("CategoryId");
++
++                    b.HasIndex("Sku")
++                        .IsUnique();
++
++                    b.ToTable("Products", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Supplier", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Address")
++                        .HasMaxLength(300)
++                        .HasColumnType("character varying(300)");
++
++                    b.Property<string>("Code")
++                        .IsRequired()
++                        .HasMaxLength(32)
++                        .HasColumnType("character varying(32)");
++
++                    b.Property<string>("Email")
++                        .HasMaxLength(254)
++                        .HasColumnType("character varying(254)");
++
++                    b.Property<bool>("IsActive")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("Name")
++                        .IsRequired()
++                        .HasMaxLength(150)
++                        .HasColumnType("character varying(150)");
++
++                    b.Property<string>("Phone")
++                        .HasMaxLength(30)
++                        .HasColumnType("character varying(30)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("Code")
++                        .IsUnique();
++
++                    b.ToTable("Suppliers", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Pricing.BranchProductPrice", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("BaselineRevision")
++                        .HasColumnType("integer");
++
++                    b.Property<decimal?>("BaselineUnitPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<Guid>("BranchId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal?>("MinimumSellingPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("Revision")
++                        .HasColumnType("integer");
++
++                    b.Property<DateTime>("UpdatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("ProductId");
++
++                    b.HasIndex("BranchId", "ProductId")
++                        .IsUnique()
++                        .HasDatabaseName("UX_BranchProductPrices_Branch_Product");
++
++                    b.ToTable("BranchProductPrices", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_BranchProductPrices_Baseline", "\"BaselineUnitPrice\" IS NULL OR \"BaselineUnitPrice\" >= 0");
++
++                            t.HasCheckConstraint("CK_BranchProductPrices_BaselineRevision", "\"BaselineRevision\" >= 0 AND \"BaselineRevision\" <= \"Revision\" AND ((\"BaselineUnitPrice\" IS NULL AND \"BaselineRevision\" = 0) OR (\"BaselineUnitPrice\" IS NOT NULL AND \"BaselineRevision\" > 0))");
++
++                            t.HasCheckConstraint("CK_BranchProductPrices_HasPrice", "\"BaselineUnitPrice\" IS NOT NULL OR \"MinimumSellingPrice\" IS NOT NULL");
++
++                            t.HasCheckConstraint("CK_BranchProductPrices_Minimum", "\"MinimumSellingPrice\" IS NULL OR \"MinimumSellingPrice\" >= 0");
++
++                            t.HasCheckConstraint("CK_BranchProductPrices_Revision", "\"Revision\" > 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Pricing.BranchProductPriceHistory", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("BranchProductPriceId")
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("ChangeType")
++                        .HasColumnType("integer");
++
++                    b.Property<DateTime>("ChangedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid?>("ChangedByUserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal?>("NewBaselineUnitPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<decimal?>("NewMinimumSellingPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<decimal?>("OldBaselineUnitPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<decimal?>("OldMinimumSellingPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<string>("Reason")
++                        .IsRequired()
++                        .HasMaxLength(500)
++                        .HasColumnType("character varying(500)");
++
++                    b.Property<int>("Revision")
++                        .HasColumnType("integer");
++
++                    b.Property<Guid?>("StockTransferLineId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("StockTransferLineId");
++
++                    b.HasIndex("BranchProductPriceId", "Revision")
++                        .IsUnique()
++                        .HasDatabaseName("UX_BranchPriceHistory_Price_Revision");
++
++                    b.ToTable("BranchProductPriceHistory", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_BranchPriceHistory_HasNewPrice", "\"NewBaselineUnitPrice\" IS NOT NULL OR \"NewMinimumSellingPrice\" IS NOT NULL");
++
++                            t.HasCheckConstraint("CK_BranchPriceHistory_Prices", "(\"OldBaselineUnitPrice\" IS NULL OR \"OldBaselineUnitPrice\" >= 0) AND (\"NewBaselineUnitPrice\" IS NULL OR \"NewBaselineUnitPrice\" >= 0) AND (\"OldMinimumSellingPrice\" IS NULL OR \"OldMinimumSellingPrice\" >= 0) AND (\"NewMinimumSellingPrice\" IS NULL OR \"NewMinimumSellingPrice\" >= 0)");
++
++                            t.HasCheckConstraint("CK_BranchPriceHistory_Reason", "length(btrim(\"Reason\")) > 0");
++
++                            t.HasCheckConstraint("CK_BranchPriceHistory_Revision", "\"Revision\" > 0");
++
++                            t.HasCheckConstraint("CK_BranchPriceHistory_Source", "(\"ChangeType\" IN (1, 2) AND \"StockTransferLineId\" IS NULL) OR (\"ChangeType\" = 3 AND \"StockTransferLineId\" IS NOT NULL)");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoice", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("InventoryLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<DateOnly>("InvoiceDate")
++                        .HasColumnType("date");
++
++                    b.Property<string>("Notes")
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<string>("Number")
++                        .IsRequired()
++                        .HasMaxLength(40)
++                        .HasColumnType("character varying(40)");
++
++                    b.Property<DateTime?>("PostedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<int>("Status")
++                        .HasColumnType("integer");
++
++                    b.Property<Guid>("SupplierId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("SupplierInvoiceNumber")
++                        .HasMaxLength(100)
++                        .HasColumnType("character varying(100)");
++
++                    b.Property<DateTime>("UpdatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("InventoryLocationId");
++
++                    b.HasIndex("Number")
++                        .IsUnique();
++
++                    b.HasIndex("SupplierId");
++
++                    b.ToTable("PurchaseInvoices", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_PurchaseInvoices_PostedAt", "(\"Status\" = 1 AND \"PostedAtUtc\" IS NULL) OR (\"Status\" = 2 AND \"PostedAtUtc\" IS NOT NULL)");
++
++                            t.HasCheckConstraint("CK_PurchaseInvoices_Status", "\"Status\" IN (1, 2)");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoiceLine", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("LineNumber")
++                        .HasColumnType("integer");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("PurchaseInvoiceId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("Quantity")
++                        .HasPrecision(18, 3)
++                        .HasColumnType("numeric(18,3)");
++
++                    b.Property<decimal>("UnitCost")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("ProductId");
++
++                    b.HasIndex("PurchaseInvoiceId", "LineNumber")
++                        .IsUnique()
++                        .HasDatabaseName("UX_PurchaseInvoiceLines_Invoice_Line");
++
++                    b.ToTable("PurchaseInvoiceLines", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_PurchaseInvoiceLines_LineNumber", "\"LineNumber\" > 0");
++
++                            t.HasCheckConstraint("CK_PurchaseInvoiceLines_Quantity", "\"Quantity\" > 0");
++
++                            t.HasCheckConstraint("CK_PurchaseInvoiceLines_UnitCost", "\"UnitCost\" >= 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.ApplicationUser", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("AccessFailedCount")
++                        .HasColumnType("integer");
++
++                    b.Property<string>("ConcurrencyStamp")
++                        .IsConcurrencyToken()
++                        .HasColumnType("text");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("Email")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<bool>("EmailConfirmed")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("FullName")
++                        .IsRequired()
++                        .HasMaxLength(150)
++                        .HasColumnType("character varying(150)");
++
++                    b.Property<bool>("IsActive")
++                        .HasColumnType("boolean");
++
++                    b.Property<bool>("LockoutEnabled")
++                        .HasColumnType("boolean");
++
++                    b.Property<DateTimeOffset?>("LockoutEnd")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("NormalizedEmail")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<string>("NormalizedUserName")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<string>("PasswordHash")
++                        .HasColumnType("text");
++
++                    b.Property<string>("PhoneNumber")
++                        .HasColumnType("text");
++
++                    b.Property<bool>("PhoneNumberConfirmed")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("SecurityStamp")
++                        .HasColumnType("text");
++
++                    b.Property<bool>("TwoFactorEnabled")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("UserName")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("NormalizedEmail")
++                        .IsUnique()
++                        .HasDatabaseName("EmailIndex");
++
++                    b.HasIndex("NormalizedUserName")
++                        .IsUnique()
++                        .HasDatabaseName("UserNameIndex");
++
++                    b.ToTable("AspNetUsers", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.ApplicationUserBranch", b =>
++                {
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("BranchId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("UserId", "BranchId");
++
++                    b.HasIndex("BranchId");
++
++                    b.ToTable("UserBranchAssignments", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.AuthSession", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime>("ExpiresAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime?>("LastRefreshedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime?>("RevokedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("SecurityStamp")
++                        .IsRequired()
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("ExpiresAtUtc")
++                        .HasDatabaseName("IX_AuthSessions_Expiry");
++
++                    b.HasIndex("UserId", "ExpiresAtUtc")
++                        .HasDatabaseName("IX_AuthSessions_User_Expiry");
++
++                    b.ToTable("AuthSessions", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_AuthSessions_Expiry", "\"ExpiresAtUtc\" > \"CreatedAtUtc\"");
++
++                            t.HasCheckConstraint("CK_AuthSessions_LastRefresh", "\"LastRefreshedAtUtc\" IS NULL OR \"LastRefreshedAtUtc\" >= \"CreatedAtUtc\"");
++
++                            t.HasCheckConstraint("CK_AuthSessions_Revocation", "\"RevokedAtUtc\" IS NULL OR \"RevokedAtUtc\" >= \"CreatedAtUtc\"");
++
++                            t.HasCheckConstraint("CK_AuthSessions_SecurityStamp", "length(btrim(\"SecurityStamp\")) > 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.RefreshToken", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("AuthSessionId")
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime?>("ConsumedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime>("ExpiresAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("TokenHash")
++                        .IsRequired()
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("TokenHash")
++                        .IsUnique()
++                        .HasDatabaseName("UX_RefreshTokens_TokenHash");
++
++                    b.HasIndex("AuthSessionId", "CreatedAtUtc")
++                        .HasDatabaseName("IX_RefreshTokens_Session_Created");
++
++                    b.ToTable("RefreshTokens", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_RefreshTokens_Consumption", "\"ConsumedAtUtc\" IS NULL OR \"ConsumedAtUtc\" >= \"CreatedAtUtc\"");
++
++                            t.HasCheckConstraint("CK_RefreshTokens_Expiry", "\"ExpiresAtUtc\" > \"CreatedAtUtc\"");
++
++                            t.HasCheckConstraint("CK_RefreshTokens_Hash", "\"TokenHash\" ~ '^[0-9A-F]{64}$'");
++                        });
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("ConcurrencyStamp")
++                        .IsConcurrencyToken()
++                        .HasColumnType("text");
++
++                    b.Property<string>("Name")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<string>("NormalizedName")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("NormalizedName")
++                        .IsUnique()
++                        .HasDatabaseName("RoleNameIndex");
++
++                    b.ToTable("AspNetRoles", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
++                {
++                    b.Property<int>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("integer");
++
++                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
++
++                    b.Property<string>("ClaimType")
++                        .HasColumnType("text");
++
++                    b.Property<string>("ClaimValue")
++                        .HasColumnType("text");
++
++                    b.Property<Guid>("RoleId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("RoleId");
++
++                    b.ToTable("AspNetRoleClaims", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
++                {
++                    b.Property<int>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("integer");
++
++                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
++
++                    b.Property<string>("ClaimType")
++                        .HasColumnType("text");
++
++                    b.Property<string>("ClaimValue")
++                        .HasColumnType("text");
++
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("UserId");
++
++                    b.ToTable("AspNetUserClaims", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
++                {
++                    b.Property<string>("LoginProvider")
++                        .HasColumnType("text");
++
++                    b.Property<string>("ProviderKey")
++                        .HasColumnType("text");
++
++                    b.Property<string>("ProviderDisplayName")
++                        .HasColumnType("text");
++
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("LoginProvider", "ProviderKey");
++
++                    b.HasIndex("UserId");
++
++                    b.ToTable("AspNetUserLogins", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
++                {
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("RoleId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("UserId", "RoleId");
++
++                    b.HasIndex("RoleId");
++
++                    b.ToTable("AspNetUserRoles", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
++                {
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("LoginProvider")
++                        .HasColumnType("text");
++
++                    b.Property<string>("Name")
++                        .HasColumnType("text");
++
++                    b.Property<string>("Value")
++                        .HasColumnType("text");
++
++                    b.HasKey("UserId", "LoginProvider", "Name");
++
++                    b.ToTable("AspNetUserTokens", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockBalance", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "InventoryLocation")
++                        .WithMany()
++                        .HasForeignKey("InventoryLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("InventoryLocation");
++
++                    b.Navigation("Product");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockMovement", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "InventoryLocation")
++                        .WithMany()
++                        .HasForeignKey("InventoryLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Purchasing.PurchaseInvoiceLine", "PurchaseInvoiceLine")
++                        .WithMany()
++                        .HasForeignKey("PurchaseInvoiceLineId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.HasOne("MarketApp.Domain.Entity.Inventory.StockTransferLine", "StockTransferLine")
++                        .WithMany()
++                        .HasForeignKey("StockTransferLineId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.Navigation("InventoryLocation");
++
++                    b.Navigation("Product");
++
++                    b.Navigation("PurchaseInvoiceLine");
++
++                    b.Navigation("StockTransferLine");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockTransfer", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "DestinationLocation")
++                        .WithMany()
++                        .HasForeignKey("DestinationLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "SourceLocation")
++                        .WithMany()
++                        .HasForeignKey("SourceLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("DestinationLocation");
++
++                    b.Navigation("SourceLocation");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockTransferLine", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Inventory.StockTransfer", "StockTransfer")
++                        .WithMany("Lines")
++                        .HasForeignKey("StockTransferId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Product");
++
++                    b.Navigation("StockTransfer");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.InventoryLocation", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
++                        .WithMany()
++                        .HasForeignKey("BranchId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.Navigation("Branch");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Product", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Category", "Category")
++                        .WithMany("Products")
++                        .HasForeignKey("CategoryId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Category");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Pricing.BranchProductPrice", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
++                        .WithMany()
++                        .HasForeignKey("BranchId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Branch");
++
++                    b.Navigation("Product");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Pricing.BranchProductPriceHistory", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Pricing.BranchProductPrice", "BranchProductPrice")
++                        .WithMany()
++                        .HasForeignKey("BranchProductPriceId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Inventory.StockTransferLine", "StockTransferLine")
++                        .WithMany()
++                        .HasForeignKey("StockTransferLineId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.Navigation("BranchProductPrice");
++
++                    b.Navigation("StockTransferLine");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoice", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "InventoryLocation")
++                        .WithMany()
++                        .HasForeignKey("InventoryLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.Supplier", "Supplier")
++                        .WithMany()
++                        .HasForeignKey("SupplierId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("InventoryLocation");
++
++                    b.Navigation("Supplier");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoiceLine", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Purchasing.PurchaseInvoice", "PurchaseInvoice")
++                        .WithMany("Lines")
++                        .HasForeignKey("PurchaseInvoiceId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Product");
++
++                    b.Navigation("PurchaseInvoice");
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.ApplicationUserBranch", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
++                        .WithMany()
++                        .HasForeignKey("BranchId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", "User")
++                        .WithMany("BranchAssignments")
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Branch");
++
++                    b.Navigation("User");
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.AuthSession", b =>
++                {
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", "User")
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("User");
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.RefreshToken", b =>
++                {
++                    b.HasOne("MarketApp.Infrastructure.Identity.AuthSession", "AuthSession")
++                        .WithMany("RefreshTokens")
++                        .HasForeignKey("AuthSessionId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("AuthSession");
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
++                {
++                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
++                        .WithMany()
++                        .HasForeignKey("RoleId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
++                {
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
++                {
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
++                {
++                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
++                        .WithMany()
++                        .HasForeignKey("RoleId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
++                {
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockTransfer", b =>
++                {
++                    b.Navigation("Lines");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Category", b =>
++                {
++                    b.Navigation("Products");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoice", b =>
++                {
++                    b.Navigation("Lines");
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.ApplicationUser", b =>
++                {
++                    b.Navigation("BranchAssignments");
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.AuthSession", b =>
++                {
++                    b.Navigation("RefreshTokens");
++                });
++#pragma warning restore 612, 618
++        }
++    }
++}
+diff --git a/src/MarketApp.Infrastructure/Migrations/20261004010454_ProtectTransferReceiptPricing.cs b/src/MarketApp.Infrastructure/Migrations/20261004010454_ProtectTransferReceiptPricing.cs
+new file mode 100644
+index 0000000..cd07445
+--- /dev/null
++++ b/src/MarketApp.Infrastructure/Migrations/20261004010454_ProtectTransferReceiptPricing.cs
+@@ -0,0 +1,71 @@
++﻿using Microsoft.EntityFrameworkCore.Migrations;
++
++#nullable disable
++
++namespace MarketApp.Infrastructure.Migrations
++{
++    /// <inheritdoc />
++    public partial class ProtectTransferReceiptPricing : Migration
++    {
++        /// <inheritdoc />
++        protected override void Up(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.AddColumn<int>(
++                name: "BaselineRevisionAtCreation",
++                table: "StockTransferLines",
++                type: "integer",
++                nullable: true);
++
++            migrationBuilder.AddColumn<int>(
++                name: "BaselineRevision",
++                table: "BranchProductPrices",
++                type: "integer",
++                nullable: false,
++                defaultValue: 0);
++
++            // Recover the most recent actual baseline change. If older data has
++            // no history, use its current revision as a conservative starting point.
++            // Leave old transfer snapshots NULL: their creation state is unknown.
++            migrationBuilder.Sql("""
++                UPDATE "BranchProductPrices" AS p
++                SET "BaselineRevision" = COALESCE(
++                    (SELECT MAX(h."Revision")
++                     FROM "BranchProductPriceHistory" AS h
++                     WHERE h."BranchProductPriceId" = p."Id"
++                       AND h."OldBaselineUnitPrice" IS DISTINCT FROM h."NewBaselineUnitPrice"),
++                    p."Revision")
++                WHERE p."BaselineUnitPrice" IS NOT NULL;
++                """);
++
++            migrationBuilder.AddCheckConstraint(
++                name: "CK_StockTransferLines_BaselineRevisionAtCreation",
++                table: "StockTransferLines",
++                sql: "\"BaselineRevisionAtCreation\" IS NULL OR \"BaselineRevisionAtCreation\" >= 0");
++
++            migrationBuilder.AddCheckConstraint(
++                name: "CK_BranchProductPrices_BaselineRevision",
++                table: "BranchProductPrices",
++                sql: "\"BaselineRevision\" >= 0 AND \"BaselineRevision\" <= \"Revision\" AND ((\"BaselineUnitPrice\" IS NULL AND \"BaselineRevision\" = 0) OR (\"BaselineUnitPrice\" IS NOT NULL AND \"BaselineRevision\" > 0))");
++        }
++
++        /// <inheritdoc />
++        protected override void Down(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.DropCheckConstraint(
++                name: "CK_StockTransferLines_BaselineRevisionAtCreation",
++                table: "StockTransferLines");
++
++            migrationBuilder.DropCheckConstraint(
++                name: "CK_BranchProductPrices_BaselineRevision",
++                table: "BranchProductPrices");
++
++            migrationBuilder.DropColumn(
++                name: "BaselineRevisionAtCreation",
++                table: "StockTransferLines");
++
++            migrationBuilder.DropColumn(
++                name: "BaselineRevision",
++                table: "BranchProductPrices");
++        }
++    }
++}
+diff --git a/src/MarketApp.Infrastructure/Migrations/AppDbContextModelSnapshot.cs b/src/MarketApp.Infrastructure/Migrations/AppDbContextModelSnapshot.cs
+index e84119f..3ec86cd 100644
+--- a/src/MarketApp.Infrastructure/Migrations/AppDbContextModelSnapshot.cs
++++ b/src/MarketApp.Infrastructure/Migrations/AppDbContextModelSnapshot.cs
+@@ -190,6 +190,9 @@ namespace MarketApp.Infrastructure.Migrations
+                         .ValueGeneratedOnAdd()
+                         .HasColumnType("uuid");
+ 
++                    b.Property<int?>("BaselineRevisionAtCreation")
++                        .HasColumnType("integer");
++
+                     b.Property<decimal>("BaselineUnitPrice")
+                         .HasPrecision(18, 4)
+                         .HasColumnType("numeric(18,4)");
+@@ -217,6 +220,8 @@ namespace MarketApp.Infrastructure.Migrations
+ 
+                     b.ToTable("StockTransferLines", null, t =>
+                         {
++                            t.HasCheckConstraint("CK_StockTransferLines_BaselineRevisionAtCreation", "\"BaselineRevisionAtCreation\" IS NULL OR \"BaselineRevisionAtCreation\" >= 0");
++
+                             t.HasCheckConstraint("CK_StockTransferLines_BaselineUnitPrice", "\"BaselineUnitPrice\" >= 0");
+ 
+                             t.HasCheckConstraint("CK_StockTransferLines_LineNumber", "\"LineNumber\" > 0");
+@@ -385,6 +390,9 @@ namespace MarketApp.Infrastructure.Migrations
+                         .ValueGeneratedOnAdd()
+                         .HasColumnType("uuid");
+ 
++                    b.Property<int>("BaselineRevision")
++                        .HasColumnType("integer");
++
+                     b.Property<decimal?>("BaselineUnitPrice")
+                         .HasPrecision(18, 4)
+                         .HasColumnType("numeric(18,4)");
+@@ -423,6 +431,8 @@ namespace MarketApp.Infrastructure.Migrations
+                         {
+                             t.HasCheckConstraint("CK_BranchProductPrices_Baseline", "\"BaselineUnitPrice\" IS NULL OR \"BaselineUnitPrice\" >= 0");
+ 
++                            t.HasCheckConstraint("CK_BranchProductPrices_BaselineRevision", "\"BaselineRevision\" >= 0 AND \"BaselineRevision\" <= \"Revision\" AND ((\"BaselineUnitPrice\" IS NULL AND \"BaselineRevision\" = 0) OR (\"BaselineUnitPrice\" IS NOT NULL AND \"BaselineRevision\" > 0))");
++
+                             t.HasCheckConstraint("CK_BranchProductPrices_HasPrice", "\"BaselineUnitPrice\" IS NOT NULL OR \"MinimumSellingPrice\" IS NOT NULL");
+ 
+                             t.HasCheckConstraint("CK_BranchProductPrices_Minimum", "\"MinimumSellingPrice\" IS NULL OR \"MinimumSellingPrice\" >= 0");
+diff --git a/src/MarketApp.Infrastructure/Persistence/Configurations/BranchProductPriceConfiguration.cs b/src/MarketApp.Infrastructure/Persistence/Configurations/BranchProductPriceConfiguration.cs
+index a30d0e7..d0515dd 100644
+--- a/src/MarketApp.Infrastructure/Persistence/Configurations/BranchProductPriceConfiguration.cs
++++ b/src/MarketApp.Infrastructure/Persistence/Configurations/BranchProductPriceConfiguration.cs
+@@ -29,6 +29,13 @@ public class BranchProductPriceConfiguration
+             table.HasCheckConstraint(
+                 "CK_BranchProductPrices_Revision",
+                 "\"Revision\" > 0");
++
++            table.HasCheckConstraint(
++                "CK_BranchProductPrices_BaselineRevision",
++                "\"BaselineRevision\" >= 0 AND " +
++                "\"BaselineRevision\" <= \"Revision\" AND " +
++                "((\"BaselineUnitPrice\" IS NULL AND \"BaselineRevision\" = 0) OR " +
++                "(\"BaselineUnitPrice\" IS NOT NULL AND \"BaselineRevision\" > 0))");
+         });
+ 
+         builder.HasKey(p => p.Id);
+@@ -63,4 +70,4 @@ public class BranchProductPriceConfiguration
+             .HasForeignKey(p => p.ProductId)
+             .OnDelete(DeleteBehavior.Restrict);
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/src/MarketApp.Infrastructure/Persistence/Configurations/StockTransferLineConfiguration.cs b/src/MarketApp.Infrastructure/Persistence/Configurations/StockTransferLineConfiguration.cs
+index 0330a96..d6bb4ad 100644
+--- a/src/MarketApp.Infrastructure/Persistence/Configurations/StockTransferLineConfiguration.cs
++++ b/src/MarketApp.Infrastructure/Persistence/Configurations/StockTransferLineConfiguration.cs
+@@ -22,6 +22,11 @@ public class StockTransferLineConfiguration
+             table.HasCheckConstraint(
+                 "CK_StockTransferLines_BaselineUnitPrice",
+                 "\"BaselineUnitPrice\" >= 0");
++
++            table.HasCheckConstraint(
++                "CK_StockTransferLines_BaselineRevisionAtCreation",
++                "\"BaselineRevisionAtCreation\" IS NULL OR " +
++                "\"BaselineRevisionAtCreation\" >= 0");
+         });
+ 
+         builder.HasKey(l => l.Id);
+@@ -52,4 +57,4 @@ public class StockTransferLineConfiguration
+             .HasForeignKey(l => l.ProductId)
+             .OnDelete(DeleteBehavior.Restrict);
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/tests/MarketApp.Application.Tests/FakeUnitOfWork.cs b/tests/MarketApp.Application.Tests/FakeUnitOfWork.cs
+new file mode 100644
+index 0000000..e283f49
+--- /dev/null
++++ b/tests/MarketApp.Application.Tests/FakeUnitOfWork.cs
+@@ -0,0 +1,98 @@
++using System.Linq.Expressions;
++using MarketApp.Application.Common;
++using MarketApp.Application.Persistence.Contracts;
++using MarketApp.Domain.Entity.Inventory;
++using MarketApp.Domain.Entity.Main;
++using MarketApp.Domain.Entity.Pricing;
++using MarketApp.Domain.Entity.Purchasing;
++
++namespace MarketApp.Application.Tests;
++
++// These fakes exercise application decisions, not database transactions or xmin.
++internal sealed class FakeUnitOfWork : IUnitOfWork
++{
++    private readonly Dictionary<Type, object> _repositories = [];
++    public int SaveCount { get; private set; }
++
++    public FakeRepository<T> Repo<T>() where T : class
++    {
++        if (!_repositories.TryGetValue(typeof(T), out var repository))
++        {
++            repository = new FakeRepository<T>();
++            _repositories.Add(typeof(T), repository);
++        }
++        return (FakeRepository<T>)repository;
++    }
++
++    public IGeneralRepository<Category> Categories => Repo<Category>();
++    public IGeneralRepository<Product> Products => Repo<Product>();
++    public IGeneralRepository<Branch> Branches => Repo<Branch>();
++    public IGeneralRepository<Supplier> Suppliers => Repo<Supplier>();
++    public IGeneralRepository<InventoryLocation> InventoryLocations => Repo<InventoryLocation>();
++    public IGeneralRepository<StockBalance> StockBalances => Repo<StockBalance>();
++    public IGeneralRepository<PurchaseInvoice> PurchaseInvoices => Repo<PurchaseInvoice>();
++    public IGeneralRepository<StockMovement> StockMovements => Repo<StockMovement>();
++    public IGeneralRepository<StockTransfer> StockTransfers => Repo<StockTransfer>();
++    public IGeneralRepository<BranchProductPrice> BranchProductPrices => Repo<BranchProductPrice>();
++    public IGeneralRepository<BranchProductPriceHistory> BranchProductPriceHistories => Repo<BranchProductPriceHistory>();
++
++    public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
++    {
++        SaveCount++;
++        return Task.FromResult(1);
++    }
++}
++
++internal sealed class FakeRepository<T> : IGeneralRepository<T> where T : class
++{
++    public List<T> Items { get; } = [];
++
++    public Task<T?> FindAsync(Expression<Func<T, bool>> predicate,
++        Expression<Func<T, object>>[]? includes = null, bool trackChanges = false,
++        CancellationToken cancellationToken = default) =>
++        Task.FromResult(Items.FirstOrDefault(predicate.Compile()));
++
++    public Task<IReadOnlyList<T>> GetAllAsync(Expression<Func<T, bool>>? predicate = null,
++        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
++        Expression<Func<T, object>>[]? includes = null, bool trackChanges = false,
++        CancellationToken cancellationToken = default)
++    {
++        var query = Items.AsQueryable();
++        if (predicate is not null) query = query.Where(predicate);
++        if (orderBy is not null) query = orderBy(query);
++        return Task.FromResult<IReadOnlyList<T>>(query.ToList());
++    }
++
++    public async Task<PagedResult<T>> GetPageAsync(int pageNumber, int pageSize,
++        Func<IQueryable<T>, IOrderedQueryable<T>> orderBy,
++        Expression<Func<T, bool>>? predicate = null,
++        Expression<Func<T, object>>[]? includes = null, bool trackChanges = false,
++        CancellationToken cancellationToken = default)
++    {
++        var items = await GetAllAsync(predicate, orderBy, includes, trackChanges, cancellationToken);
++        return new(items.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList(),
++            items.Count, pageNumber, pageSize);
++    }
++
++    public Task<bool> AnyAsync(Expression<Func<T, bool>> predicate,
++        CancellationToken cancellationToken = default) =>
++        Task.FromResult(Items.Any(predicate.Compile()));
++
++    public Task AddAsync(T entity, CancellationToken cancellationToken = default)
++    {
++        Items.Add(entity);
++        return Task.CompletedTask;
++    }
++
++    public Task AddRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
++    {
++        Items.AddRange(entities);
++        return Task.CompletedTask;
++    }
++
++    public void Remove(T entity) => Items.Remove(entity);
++    public void RemoveRange(IEnumerable<T> entities)
++    {
++        foreach (var entity in entities.ToArray()) Items.Remove(entity);
++    }
++}
+diff --git a/tests/MarketApp.Application.Tests/MarketApp.Application.Tests.csproj b/tests/MarketApp.Application.Tests/MarketApp.Application.Tests.csproj
+new file mode 100644
+index 0000000..4efd96e
+--- /dev/null
++++ b/tests/MarketApp.Application.Tests/MarketApp.Application.Tests.csproj
+@@ -0,0 +1,25 @@
++﻿<Project Sdk="Microsoft.NET.Sdk">
++
++  <PropertyGroup>
++    <TargetFramework>net10.0</TargetFramework>
++    <ImplicitUsings>enable</ImplicitUsings>
++    <Nullable>enable</Nullable>
++    <IsPackable>false</IsPackable>
++  </PropertyGroup>
++
++  <ItemGroup>
++    <PackageReference Include="coverlet.collector" Version="6.0.4" />
++    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
++    <PackageReference Include="xunit" Version="2.9.3" />
++    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
++  </ItemGroup>
++
++  <ItemGroup>
++    <Using Include="Xunit" />
++  </ItemGroup>
++
++  <ItemGroup>
++    <ProjectReference Include="..\..\src\MarketApp.Application\MarketApp.Application.csproj" />
++  </ItemGroup>
++
++</Project>
+\ No newline at end of file
+diff --git a/tests/MarketApp.Application.Tests/TransferReceiptPricingTests.cs b/tests/MarketApp.Application.Tests/TransferReceiptPricingTests.cs
+new file mode 100644
+index 0000000..827279d
+--- /dev/null
++++ b/tests/MarketApp.Application.Tests/TransferReceiptPricingTests.cs
+@@ -0,0 +1,300 @@
++using MarketApp.Application.Common.Results;
++using MarketApp.Application.DTOs.Pricing;
++using MarketApp.Application.DTOs.StockTransfers;
++using MarketApp.Application.Services;
++using MarketApp.Domain.Entity.Inventory;
++using MarketApp.Domain.Entity.Main;
++using MarketApp.Domain.Entity.Pricing;
++using MarketApp.Domain.Enums;
++
++namespace MarketApp.Application.Tests;
++
++public class TransferReceiptPricingTests
++{
++    [Fact]
++    public async Task Receive_applies_baseline_preserves_minimum_and_records_actor()
++    {
++        var f = await Fixture.Create();
++        var transfer = await f.Dispatch(80m);
++        var saves = f.Work.SaveCount;
++
++        var result = await f.Transfers.ReceiveAsync(transfer.Id, f.Actor);
++
++        Assert.Equal(StockTransferResultStatus.Success, result.Status);
++        Assert.Equal(80m, f.Price!.BaselineUnitPrice);
++        Assert.Equal(200m, f.Price.MinimumSellingPrice);
++        Assert.Equal(3, f.Price.Revision);
++        Assert.Equal(3, f.Price.BaselineRevision);
++        Assert.Equal(15m, f.DestinationBalance.Quantity);
++        Assert.Equal(StockTransferStatus.Received, transfer.Status);
++        Assert.Equal(saves + 1, f.Work.SaveCount);
++        var history = Assert.Single(f.ReceiptHistory);
++        Assert.Equal(f.Actor, history.ChangedByUserId);
++        Assert.Equal(transfer.Lines.Single().Id, history.StockTransferLineId);
++        Assert.Equal(100m, history.OldBaselineUnitPrice);
++        Assert.Equal(80m, history.NewBaselineUnitPrice);
++        Assert.Equal(200m, history.OldMinimumSellingPrice);
++        Assert.Equal(200m, history.NewMinimumSellingPrice);
++    }
++
++    [Fact]
++    public async Task Receive_keeps_newer_150_but_receives_stock_from_100_transfer()
++    {
++        var f = await Fixture.Create();
++        var transfer = await f.Dispatch(100m);
++        await f.SetBaseline(150m);
++
++        var result = await f.Transfers.ReceiveAsync(transfer.Id, f.Actor);
++
++        Assert.Equal(StockTransferResultStatus.Success, result.Status);
++        Assert.Equal(150m, f.Price!.BaselineUnitPrice);
++        Assert.Equal(100m, transfer.Lines.Single().BaselineUnitPrice);
++        Assert.Equal(15m, f.DestinationBalance.Quantity);
++        Assert.Empty(f.ReceiptHistory);
++    }
++
++    [Fact]
++    public async Task Minimum_only_change_does_not_block_transfer_baseline()
++    {
++        var f = await Fixture.Create();
++        var transfer = await f.Dispatch(80m);
++        await f.SetMinimum(240m);
++        Assert.Equal(1, f.Price!.BaselineRevision);
++
++        await f.Transfers.ReceiveAsync(transfer.Id, f.Actor);
++
++        Assert.Equal(80m, f.Price.BaselineUnitPrice);
++        Assert.Equal(240m, f.Price.MinimumSellingPrice);
++        Assert.Equal(4, f.Price.Revision);
++        Assert.Equal(4, f.Price.BaselineRevision);
++    }
++
++    [Fact]
++    public async Task Baseline_changed_and_changed_back_still_protects_newer_decision()
++    {
++        var f = await Fixture.Create();
++        var transfer = await f.Dispatch(80m);
++        await f.SetBaseline(150m);
++        await f.SetBaseline(100m);
++
++        await f.Transfers.ReceiveAsync(transfer.Id, f.Actor);
++
++        Assert.Equal(100m, f.Price!.BaselineUnitPrice);
++        Assert.Empty(f.ReceiptHistory);
++    }
++
++    [Theory]
++    [InlineData(false)]
++    [InlineData(true)]
++    public async Task Receipt_initializes_missing_baseline_including_zero(bool hasMinimum)
++    {
++        var f = await Fixture.Create(baseline: null, hasMinimum: hasMinimum);
++        var transfer = await f.Dispatch(0m);
++        Assert.Equal(0, transfer.Lines.Single().BaselineRevisionAtCreation);
++
++        var result = await f.Transfers.ReceiveAsync(transfer.Id, f.Actor);
++
++        Assert.Equal(StockTransferResultStatus.Success, result.Status);
++        Assert.Equal(0m, f.Price!.BaselineUnitPrice);
++        Assert.Equal(hasMinimum ? (decimal?)200m : null, f.Price.MinimumSellingPrice);
++        Assert.Single(f.ReceiptHistory);
++    }
++
++    [Fact]
++    public async Task Repeated_receipt_does_not_duplicate_stock_history_or_save()
++    {
++        var f = await Fixture.Create();
++        var transfer = await f.Dispatch(80m);
++        await f.Transfers.ReceiveAsync(transfer.Id, f.Actor);
++        var saves = f.Work.SaveCount;
++        var movements = f.Work.Repo<StockMovement>().Items.Count;
++
++        var result = await f.Transfers.ReceiveAsync(transfer.Id, f.Actor);
++
++        Assert.Equal(StockTransferResultStatus.Success, result.Status);
++        Assert.Equal(15m, f.DestinationBalance.Quantity);
++        Assert.Single(f.ReceiptHistory);
++        Assert.Equal(saves, f.Work.SaveCount);
++        Assert.Equal(movements, f.Work.Repo<StockMovement>().Items.Count);
++    }
++
++    [Fact]
++    public async Task Same_product_lines_at_one_price_produce_one_price_event()
++    {
++        var f = await Fixture.Create();
++        var transfer = await f.Dispatch(80m, lines: 2);
++
++        await f.Transfers.ReceiveAsync(transfer.Id, f.Actor);
++
++        Assert.Equal(20m, f.DestinationBalance.Quantity);
++        Assert.Single(f.ReceiptHistory);
++        Assert.Equal(2, f.Work.Repo<StockMovement>().Items
++            .Count(m => m.MovementType == StockMovementType.TransferIn));
++    }
++
++    [Fact]
++    public async Task Conflicting_baselines_for_same_product_are_rejected_at_creation()
++    {
++        var f = await Fixture.Create();
++        var request = f.Request(80m, 2);
++        request.Lines[1].BaselineUnitPrice = 90m;
++        var saves = f.Work.SaveCount;
++
++        var result = await f.Transfers.CreateAsync(request);
++
++        Assert.Equal(StockTransferResultStatus.InvalidRequest, result.Status);
++        Assert.Empty(f.Work.Repo<StockTransfer>().Items);
++        Assert.Equal(saves, f.Work.SaveCount);
++    }
++
++    [Fact]
++    public async Task Legacy_transfer_receives_stock_without_overwriting_baseline()
++    {
++        var f = await Fixture.Create();
++        var transfer = await f.Dispatch(80m);
++        transfer.Lines.Single().BaselineRevisionAtCreation = null;
++
++        await f.Transfers.ReceiveAsync(transfer.Id, f.Actor);
++
++        Assert.Equal(100m, f.Price!.BaselineUnitPrice);
++        Assert.Equal(15m, f.DestinationBalance.Quantity);
++        Assert.Empty(f.ReceiptHistory);
++    }
++
++    [Fact]
++    public async Task Later_validation_failure_leaves_all_tracked_stock_and_prices_unchanged()
++    {
++        var f = await Fixture.Create();
++        var transfer = await f.Dispatch(80m);
++        var other = new Product();
++        f.Work.Repo<Product>().Items.Add(other);
++        var otherPrice = new BranchProductPrice
++        {
++            BranchId = f.Branch.Id, ProductId = other.Id,
++            BaselineUnitPrice = 100m, BaselineRevision = 1, Revision = int.MaxValue
++        };
++        f.Work.Repo<BranchProductPrice>().Items.Add(otherPrice);
++        transfer.Lines.Add(new StockTransferLine
++        {
++            StockTransferId = transfer.Id, LineNumber = 2, ProductId = other.Id,
++            Quantity = 2m, BaselineUnitPrice = 80m, BaselineRevisionAtCreation = 1
++        });
++        var saves = f.Work.SaveCount;
++        var movements = f.Work.Repo<StockMovement>().Items.Count;
++
++        var result = await f.Transfers.ReceiveAsync(transfer.Id, f.Actor);
++
++        Assert.Equal(StockTransferResultStatus.Conflict, result.Status);
++        Assert.Equal(StockTransferStatus.InTransit, transfer.Status);
++        Assert.Equal(10m, f.DestinationBalance.Quantity);
++        Assert.Equal(100m, f.Price!.BaselineUnitPrice);
++        Assert.Equal(100m, otherPrice.BaselineUnitPrice);
++        Assert.Empty(f.ReceiptHistory);
++        Assert.Equal(saves, f.Work.SaveCount);
++        Assert.Equal(movements, f.Work.Repo<StockMovement>().Items.Count);
++    }
++
++    [Fact]
++    public async Task Receipt_requires_authenticated_actor_before_mutating_stock()
++    {
++        var f = await Fixture.Create();
++        var transfer = await f.Dispatch(80m);
++        var saves = f.Work.SaveCount;
++
++        var result = await f.Transfers.ReceiveAsync(transfer.Id, Guid.Empty);
++
++        Assert.Equal(StockTransferResultStatus.InvalidRequest, result.Status);
++        Assert.Equal(StockTransferStatus.InTransit, transfer.Status);
++        Assert.Equal(10m, f.DestinationBalance.Quantity);
++        Assert.Equal(saves, f.Work.SaveCount);
++    }
++
++    [Fact]
++    public async Task Same_baseline_receipt_does_not_create_artificial_price_revision()
++    {
++        var f = await Fixture.Create();
++        var transfer = await f.Dispatch(100m);
++
++        await f.Transfers.ReceiveAsync(transfer.Id, f.Actor);
++
++        Assert.Equal(2, f.Price!.Revision);
++        Assert.Equal(1, f.Price.BaselineRevision);
++        Assert.Equal(15m, f.DestinationBalance.Quantity);
++        Assert.Empty(f.ReceiptHistory);
++    }
++
++    private sealed class Fixture
++    {
++        public FakeUnitOfWork Work { get; } = new();
++        public Guid Actor { get; } = Guid.NewGuid();
++        public Branch Branch { get; } = new();
++        public Product Product { get; } = new();
++        public InventoryLocation Source { get; } = new();
++        public InventoryLocation Destination { get; }
++        public StockBalance DestinationBalance { get; }
++        public StockTransferService Transfers { get; }
++        private BranchProductPriceService Pricing { get; }
++        public BranchProductPrice? Price => Work.Repo<BranchProductPrice>().Items
++            .SingleOrDefault(p => p.ProductId == Product.Id);
++        public IEnumerable<BranchProductPriceHistory> ReceiptHistory =>
++            Work.Repo<BranchProductPriceHistory>().Items
++                .Where(h => h.ChangeType == BranchPriceChangeType.TransferReceipt);
++
++        private Fixture()
++        {
++            Destination = new() { BranchId = Branch.Id, Branch = Branch };
++            DestinationBalance = new()
++            {
++                ProductId = Product.Id, InventoryLocationId = Destination.Id, Quantity = 10m
++            };
++            Work.Repo<Branch>().Items.Add(Branch);
++            Work.Repo<Product>().Items.Add(Product);
++            Work.Repo<InventoryLocation>().Items.AddRange([Source, Destination]);
++            Work.Repo<StockBalance>().Items.AddRange([
++                new() { ProductId = Product.Id, InventoryLocationId = Source.Id, Quantity = 100m },
++                DestinationBalance
++            ]);
++            Transfers = new(Work);
++            Pricing = new(Work);
++        }
++
++        public static async Task<Fixture> Create(decimal? baseline = 100m, bool hasMinimum = true)
++        {
++            var fixture = new Fixture();
++            if (baseline.HasValue) await fixture.SetBaseline(baseline.Value);
++            if (hasMinimum) await fixture.SetMinimum(200m);
++            return fixture;
++        }
++
++        private UpdateBranchPriceDto PriceRequest(decimal value) => new()
++        {
++            Price = value, ExpectedRevision = Price?.Revision ?? 0, Reason = "Test price decision"
++        };
++
++        public async Task SetBaseline(decimal value) => Assert.Equal(BranchPriceResultStatus.Success,
++            (await Pricing.SetBaselineAsync(Branch.Id, Product.Id, PriceRequest(value), Actor)).Status);
++
++        public async Task SetMinimum(decimal value) => Assert.Equal(BranchPriceResultStatus.Success,
++            (await Pricing.SetMinimumSellingPriceAsync(Branch.Id, Product.Id, PriceRequest(value), Actor)).Status);
++
++        public CreateStockTransferDto Request(decimal value, int lines) => new()
++        {
++            SourceLocationId = Source.Id, DestinationLocationId = Destination.Id,
++            Lines = Enumerable.Range(0, lines).Select(_ => new CreateStockTransferLineDto
++            {
++                ProductId = Product.Id, Quantity = 5m, BaselineUnitPrice = value
++            }).ToList()
++        };
++
++        public async Task<StockTransfer> Dispatch(decimal value, int lines = 1)
++        {
++            var created = await Transfers.CreateAsync(Request(value, lines));
++            Assert.Equal(StockTransferResultStatus.Success, created.Status);
++            var transfer = Work.Repo<StockTransfer>().Items.Single(t => t.Id == created.Transfer!.Id);
++            var shipped = await Transfers.ShipAsync(transfer.Id);
++            Assert.Equal(StockTransferResultStatus.Success, shipped.Status);
++            Assert.Empty(ReceiptHistory);
++            return transfer;
++        }
++    }
++}

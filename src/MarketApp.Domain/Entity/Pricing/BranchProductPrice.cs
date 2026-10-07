@@ -20,6 +20,10 @@ public class BranchProductPrice
 
     public int Revision { get; set; } = 1;
 
+    // The general revision at the last baseline change; zero means unset.
+    // Minimum-selling-price changes do not change this value.
+    public int BaselineRevision { get; set; }
+
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public uint Version { get; set; }

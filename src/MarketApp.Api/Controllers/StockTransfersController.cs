@@ -2,6 +2,7 @@
 using MarketApp.Application.DTOs.StockTransfers;
 using MarketApp.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace MarketApp.Api.Controllers;
 
@@ -71,8 +72,15 @@ public class StockTransfersController : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
+        if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier),
+                out var actorUserId) || actorUserId == Guid.Empty)
+        {
+            return Unauthorized();
+        }
+
         return ToActionResult(await _transferService.ReceiveAsync(
             id,
+            actorUserId,
             cancellationToken));
     }
 

@@ -114,6 +114,8 @@ public static class ServiceCollectionsExtension
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IBranchAccessService, BranchAccessService>();
 
+        services.AddProductPhotos(configuration);
+
         return services;
     }
 }

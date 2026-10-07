@@ -31,7 +31,7 @@ public class ProductService : IProductService
                     p.CategoryId == query.CategoryId.Value) &&
                 (!query.IsActive.HasValue ||
                     p.IsActive == query.IsActive.Value),
-            includes: [p => p.Category],
+            includes: [p => p.Category, p => p.Photos],
             cancellationToken: cancellationToken);
 
         var items = page.Items
@@ -51,7 +51,7 @@ public class ProductService : IProductService
     {
         var product = await _unitOfWork.Products.FindAsync(
             predicate: p => p.Id == id,
-            includes: [p => p.Category],
+            includes: [p => p.Category, p => p.Photos],
             cancellationToken: cancellationToken);
 
         return product is null
@@ -109,6 +109,7 @@ public class ProductService : IProductService
     {
         var product = await _unitOfWork.Products.FindAsync(
             predicate: p => p.Id == id,
+            includes: [p => p.Photos],
             trackChanges: true,
             cancellationToken: cancellationToken);
 
@@ -159,6 +160,14 @@ public class ProductService : IProductService
             product.Sku,
             product.IsActive,
             product.CategoryId,
-            categoryName);
+            categoryName)
+        {
+            Photos = product.Photos
+                .Where(photo => photo.IsReady && photo.DeletedAtUtc == null)
+                .OrderBy(photo => photo.SortOrder)
+                .ThenBy(photo => photo.Id)
+                .Select(ProductPhotoDto.FromEntity)
+                .ToList()
+        };
     }
 }

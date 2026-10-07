@@ -22,6 +22,11 @@ public class StockTransferLineConfiguration
             table.HasCheckConstraint(
                 "CK_StockTransferLines_BaselineUnitPrice",
                 "\"BaselineUnitPrice\" >= 0");
+
+            table.HasCheckConstraint(
+                "CK_StockTransferLines_BaselineRevisionAtCreation",
+                "\"BaselineRevisionAtCreation\" IS NULL OR " +
+                "\"BaselineRevisionAtCreation\" >= 0");
         });
 
         builder.HasKey(l => l.Id);

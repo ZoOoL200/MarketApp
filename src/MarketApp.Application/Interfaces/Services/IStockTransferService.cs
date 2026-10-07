@@ -19,6 +19,7 @@ public interface IStockTransferService
 
     Task<StockTransferResult> ReceiveAsync(
         Guid id,
+        Guid actorUserId,
         CancellationToken cancellationToken = default);
 
     Task<StockTransferResult> CancelAsync(

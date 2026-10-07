@@ -1,6 +1,6 @@
 @baseUrl = https://localhost:7126
 @branchId = ba7c4374-a68b-4c60-ab06-55ac62505670
-@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImUyNmI3YTE3LWZlMTgtNGRlMi1hYzk1LTZlNGJlMzUxMTkzZSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhaG1lZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFobWVkcmFiaWVzYWlkQGdtYWlsLmNvbSIsIkFzcE5ldC5JZGVudGl0eS5TZWN1cml0eVN0YW1wIjoiUlRNT1hYTkRRV1BJR0c3N0FDWjVVUEpEUUg0U1hIS0EiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJTdGFrZWhvbGRlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiMTRlMWQ5NTEtNjZlMi00ZjRiLWI2MTctZmI3MjIxMzFjNGUwIiwic3ViIjoiZTI2YjdhMTctZmUxOC00ZGUyLWFjOTUtNmU0YmUzNTExOTNlIiwianRpIjoiNWQ4Y2JkNWY5ZmRhNGVmOTk3ZGY3MmMyMDM5OTNlMzMiLCJpYXQiOjE3OTA5Mjk5NjIsIm5iZiI6MTc5MDkyOTk2MiwiZXhwIjoxNzkwOTMxNzYyLCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ.gOCzeWhT9kMy8rFIjLX5qE5jh6xMZkH7jB5CNCSoe14
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImUyNmI3YTE3LWZlMTgtNGRlMi1hYzk1LTZlNGJlMzUxMTkzZSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhaG1lZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFobWVkcmFiaWVzYWlkQGdtYWlsLmNvbSIsIkFzcE5ldC5JZGVudGl0eS5TZWN1cml0eVN0YW1wIjoiUlRNT1hYTkRRV1BJR0c3N0FDWjVVUEpEUUg0U1hIS0EiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJTdGFrZWhvbGRlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiZGU1ZTVhMmMtOGM3NC00MzYwLWFhOTQtZTBhZTc5NTY1MDlmIiwic3ViIjoiZTI2YjdhMTctZmUxOC00ZGUyLWFjOTUtNmU0YmUzNTExOTNlIiwianRpIjoiMmEyMzY5M2FhNTA4NGViMzk3ZjcwZjVjNmIwZDA3YjUiLCJpYXQiOjE3OTEwNzY5MjQsIm5iZiI6MTc5MTA3NjkyNCwiZXhwIjoxNzkxMDc4NzI0LCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ.Ene5Gzf9RFg2qhh3awnJJOtimgHQ8D5tbv7tD1Plm7I
 
 ### Create a branch
 POST {{baseUrl}}/api/branches
@@ -20,9 +20,11 @@ Authorization: Bearer {{accessToken}}
 
 ### Get one branch
 GET {{baseUrl}}/api/branches/{{branchId}}
+Authorization: Bearer {{accessToken}}
 
 ### Update and deactivate the branch
 PUT {{baseUrl}}/api/branches/{{branchId}}
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -35,12 +37,15 @@ Content-Type: application/json
 
 ### List active branches
 GET {{baseUrl}}/api/branches?isActive=true
+Authorization: Bearer {{accessToken}}
 
 ### List inactive branches
 GET {{baseUrl}}/api/branches?isActive=false
+Authorization: Bearer {{accessToken}}
 
 ### Duplicate code, including an inactive branch
 POST {{baseUrl}}/api/branches
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -51,6 +56,7 @@ Content-Type: application/json
 
 ### Blank name
 POST {{baseUrl}}/api/branches
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -61,6 +67,8 @@ Content-Type: application/json
 
 ### Invalid page size
 GET {{baseUrl}}/api/branches?pageSize=201
+Authorization: Bearer {{accessToken}}
 
 ### Missing branch
 GET {{baseUrl}}/api/branches/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{accessToken}}

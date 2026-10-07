@@ -1,0 +1,90 @@
+@host = https://localhost:7126
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImUyNmI3YTE3LWZlMTgtNGRlMi1hYzk1LTZlNGJlMzUxMTkzZSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhaG1lZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFobWVkcmFiaWVzYWlkQGdtYWlsLmNvbSIsIkFzcE5ldC5JZGVudGl0eS5TZWN1cml0eVN0YW1wIjoiUlRNT1hYTkRRV1BJR0c3N0FDWjVVUEpEUUg0U1hIS0EiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJTdGFrZWhvbGRlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiZGU1ZTVhMmMtOGM3NC00MzYwLWFhOTQtZTBhZTc5NTY1MDlmIiwic3ViIjoiZTI2YjdhMTctZmUxOC00ZGUyLWFjOTUtNmU0YmUzNTExOTNlIiwianRpIjoiMmEyMzY5M2FhNTA4NGViMzk3ZjcwZjVjNmIwZDA3YjUiLCJpYXQiOjE3OTEwNzY5MjQsIm5iZiI6MTc5MTA3NjkyNCwiZXhwIjoxNzkxMDc4NzI0LCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ.Ene5Gzf9RFg2qhh3awnJJOtimgHQ8D5tbv7tD1Plm7I
+@branchId = ba7c4374-a68b-4c60-ab06-55ac62505670
+@productId = ca6f2e9a-24b5-4194-bb2a-66ce34b6a469
+@sourceLocationId = 46599a6f-bc0f-4cf8-b6ad-83e9312a042c
+@destinationLocationId = c2727378-b800-4077-b7cf-4541a97af1b1
+@transferId = 6757e1cd-42ac-4edd-8a26-410ac776d3db
+@expectedRevision = 2
+
+# Use active references, with at least 5 units in the central source location.
+# destinationLocationId must belong to branchId.
+# Before EACH price PUT, set expectedRevision from the current GET response.
+# Use 0 only when no price record exists (404).
+
+### 1. Read existing pricing and copy revision to expectedRevision
+GET {{host}}/api/branches/{{branchId}}/product-prices/{{productId}}
+Authorization: Bearer {{token}}
+
+### 2. Set initial baseline to 100
+PUT {{host}}/api/branches/{{branchId}}/product-prices/{{productId}}/baseline
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "price": 100,
+  "expectedRevision": {{expectedRevision}},
+  "reason": "Transfer receipt pricing test: initial baseline"
+}
+
+### 3. Create a NEW transfer after applying the migration; copy its id to transferId
+POST {{host}}/api/stock-transfers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sourceLocationId": "{{sourceLocationId}}",
+  "destinationLocationId": "{{destinationLocationId}}",
+  "notes": "Keep newer baseline on receipt",
+  "lines": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 5,
+      "baselineUnitPrice": 100
+    }
+  ]
+}
+
+### 4. Ship
+POST {{host}}/api/stock-transfers/{{transferId}}/ship
+Authorization: Bearer {{token}}
+
+### 5. Set newer baseline to 150 (refresh expectedRevision first)
+PUT {{host}}/api/branches/{{branchId}}/product-prices/{{productId}}/baseline
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "price": 150,
+  "expectedRevision": {{expectedRevision}},
+  "reason": "Inflation adjustment while transfer is in transit"
+}
+
+### 6. Record destination quantity before receipt
+GET {{host}}/api/stock/balances?inventoryLocationId={{destinationLocationId}}&productId={{productId}}
+Authorization: Bearer {{token}}
+
+### 7. Receive: 200, status Received; transfer line still has baseline 100
+POST {{host}}/api/stock-transfers/{{transferId}}/receive
+Authorization: Bearer {{token}}
+
+### 8. Must still be 150; minimumSellingPrice must be unchanged
+GET {{host}}/api/branches/{{branchId}}/product-prices/{{productId}}
+Authorization: Bearer {{token}}
+
+### 9. Destination quantity must have increased by exactly 5
+GET {{host}}/api/stock/balances?inventoryLocationId={{destinationLocationId}}&productId={{productId}}
+Authorization: Bearer {{token}}
+
+### 10. Repeat receipt: 200, no extra stock or price history
+POST {{host}}/api/stock-transfers/{{transferId}}/receive
+Authorization: Bearer {{token}}
+
+### 11. The manual change to 150 remains; no TransferReceipt price change for this transfer
+GET {{host}}/api/branches/{{branchId}}/product-prices/{{productId}}/history
+Authorization: Bearer {{token}}
+
+# Additional scenarios are described in docs/transfer-receipt-pricing.md.
+
+
+

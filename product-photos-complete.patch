@@ -1,0 +1,2893 @@
+diff --git a/MarketApp.sln b/MarketApp.sln
+index b066654..9a6e30b 100644
+--- a/MarketApp.sln
++++ b/MarketApp.sln
+@@ -17,6 +17,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05
+ EndProject
+ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarketApp.Application.Tests", "tests\MarketApp.Application.Tests\MarketApp.Application.Tests.csproj", "{0C616C26-6E1A-4F57-8FB3-5A7897F2847D}"
+ EndProject
++Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarketApp.Photos.Tests", "tests\MarketApp.Photos.Tests\MarketApp.Photos.Tests.csproj", "{2BB2D4A3-29D4-42C1-AB64-557A99456693}"
++EndProject
+ Global
+ 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+ 		Debug|Any CPU = Debug|Any CPU
+@@ -87,6 +89,18 @@ Global
+ 		{0C616C26-6E1A-4F57-8FB3-5A7897F2847D}.Release|x64.Build.0 = Release|Any CPU
+ 		{0C616C26-6E1A-4F57-8FB3-5A7897F2847D}.Release|x86.ActiveCfg = Release|Any CPU
+ 		{0C616C26-6E1A-4F57-8FB3-5A7897F2847D}.Release|x86.Build.0 = Release|Any CPU
++		{2BB2D4A3-29D4-42C1-AB64-557A99456693}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
++		{2BB2D4A3-29D4-42C1-AB64-557A99456693}.Debug|Any CPU.Build.0 = Debug|Any CPU
++		{2BB2D4A3-29D4-42C1-AB64-557A99456693}.Debug|x64.ActiveCfg = Debug|Any CPU
++		{2BB2D4A3-29D4-42C1-AB64-557A99456693}.Debug|x64.Build.0 = Debug|Any CPU
++		{2BB2D4A3-29D4-42C1-AB64-557A99456693}.Debug|x86.ActiveCfg = Debug|Any CPU
++		{2BB2D4A3-29D4-42C1-AB64-557A99456693}.Debug|x86.Build.0 = Debug|Any CPU
++		{2BB2D4A3-29D4-42C1-AB64-557A99456693}.Release|Any CPU.ActiveCfg = Release|Any CPU
++		{2BB2D4A3-29D4-42C1-AB64-557A99456693}.Release|Any CPU.Build.0 = Release|Any CPU
++		{2BB2D4A3-29D4-42C1-AB64-557A99456693}.Release|x64.ActiveCfg = Release|Any CPU
++		{2BB2D4A3-29D4-42C1-AB64-557A99456693}.Release|x64.Build.0 = Release|Any CPU
++		{2BB2D4A3-29D4-42C1-AB64-557A99456693}.Release|x86.ActiveCfg = Release|Any CPU
++		{2BB2D4A3-29D4-42C1-AB64-557A99456693}.Release|x86.Build.0 = Release|Any CPU
+ 	EndGlobalSection
+ 	GlobalSection(SolutionProperties) = preSolution
+ 		HideSolutionNode = FALSE
+@@ -97,6 +111,7 @@ Global
+ 		{311E7CD3-9C94-43B6-BF27-8A38FDA9ED06} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+ 		{75301C54-F8C6-4CF5-889D-46F28CE22E35} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+ 		{0C616C26-6E1A-4F57-8FB3-5A7897F2847D} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
++		{2BB2D4A3-29D4-42C1-AB64-557A99456693} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+ 	EndGlobalSection
+ 	GlobalSection(ExtensibilityGlobals) = postSolution
+ 		SolutionGuid = {1D1BC9E6-009C-4CF2-B2CA-838C12DCD179}
+diff --git a/docs/product-photos.md b/docs/product-photos.md
+new file mode 100644
+index 0000000..14eae8b
+--- /dev/null
++++ b/docs/product-photos.md
+@@ -0,0 +1,159 @@
++# Product photo upload and storage
++
++This completes the photo metadata step. Product images live in local file storage or a private Amazon S3 bucket. PostgreSQL stores their identifiers, storage keys, content hashes and display order. The API normalizes uploads to WebP and serves them through authenticated endpoints.
++
++This patch is based on the previously applied transfer pricing and product photo metadata changes. It does not include those earlier patches again.
++
++## Apply and run
++
++From the repository root containing MarketApp.sln, save your current work and put product-photos-complete.patch in that folder. Run in Terminal or PowerShell:
++
++```powershell
++git apply --check product-photos-complete.patch
++git apply product-photos-complete.patch
++dotnet restore MarketApp.sln
++dotnet build MarketApp.sln
++dotnet test MarketApp.sln
++```
++
++If the check reports a conflict, do not force the patch; compare the named files with your current changes. This patch expects the ProductPhoto entity and AddProductPhotoMetadata migration to exist already.
++
++The new CompleteProductPhotoStorage migration is included. Do not run Add-Migration again. In Visual Studio Package Manager Console, run:
++
++```powershell
++Update-Database -Project MarketApp.Infrastructure -StartupProject MarketApp.Api
++```
++
++Or from a terminal at the repository root, use:
++
++```powershell
++dotnet ef database update `
++  --project src/MarketApp.Infrastructure `
++  --startup-project src/MarketApp.Api
++dotnet run --project src/MarketApp.Api -- --environment Development
++```
++
++Use your existing PostgreSQL connection string and JWT signing key. Run the database update before starting the API. Open MarketApp.sln explicitly; the pre-existing MarketApp.slnx is empty.
++
++## Storage configuration
++
++Local storage is the default. On Windows its default location is `%LOCALAPPDATA%\MarketApp\ProductPhotos`, relative to the account running the API. For a predictable persistent location, merge this section into appsettings.Development.json:
++
++```json
++{
++  "PhotoStorage": {
++    "Provider": "Local",
++    "LocalRoot": "C:\\MarketAppData\\ProductPhotos"
++  }
++}
++```
++
++The API account must have read/write/delete access. Keep this folder outside wwwroot and back it up with the database. A container needs a persistent mounted folder; multiple API instances need shared storage or S3.
++
++For a private Amazon S3 bucket, set:
++
++```json
++{
++  "PhotoStorage": {
++    "Provider": "S3",
++    "BucketName": "YOUR_PRIVATE_BUCKET",
++    "Region": "YOUR_AWS_REGION"
++  }
++}
++```
++
++The code uses the AWS SDK credential chain when explicit keys are absent. Give the API identity GetObject, PutObject and DeleteObject permissions for the bucket's products/* prefix. Missing-object detection may also require scoped ListBucket permission; S3 can otherwise return 403 for a missing key. Keep public access blocked. For development only, PhotoStorage:AccessKeyId and PhotoStorage:SecretAccessKey can be supplied together through User Secrets. Never commit credentials.
++
++The bucket and its IAM permissions must be provisioned separately; this patch does not create them. Changing the provider does not copy existing images. Copy existing objects with the same keys before switching, or use separate development and production databases. With S3 versioning, deletion may leave prior object versions, subject to the bucket lifecycle policy.
++
++## API contract
++
++Base route: `/api/products/{productId}/photos`.
++
++| Method | Suffix | Role | Result |
++| --- | --- | --- | --- |
++| GET | none | Stakeholder, BranchManager, Seller | Ordered ready-photo array, or 404 for missing product |
++| POST | none | Stakeholder | Multipart File and optional SortOrder; 201 with photo metadata |
++| GET | /{photoId}/content | All three roles | WebP bytes; 304 for matching conditional request; 404 if unavailable |
++| PUT | /{photoId}/order | Stakeholder | JSON { "sortOrder": 0 }; 204 or 404 |
++| DELETE | /{photoId} | Stakeholder | 204; repeating is safe |
++
++Every route requires the existing bearer JWT and active session. Photos are shared product catalog data. Existing product-management endpoint permissions are unchanged. An unauthenticated request returns 401; a seller or manager attempting a photo write returns 403.
++
++Uploads accept JPEG, PNG or WebP content, between 1 byte and 5 MiB, up to 20 million decoded pixels. The multipart request limit is 6 MiB. Invalid image data is rejected even when its filename says .jpg. Original filenames never become storage paths. The API applies orientation, resizes to at most 1600 pixels on the longest edge without enlarging small images, retains only the first frame, strips source metadata, and writes WebP quality 82. This is a display image, not an archival original. Inactive products reject new uploads with 409; missing products return 404.
++
++Metadata includes id, storageKey, contentType, fileSizeBytes, contentHash, sortOrder, createdAtUtc and downloadPath. contentHash is SHA-256 of the normalized bytes, not the original upload. Lower sortOrder appears first; ties use photo id. There is no separate primary-photo flag.
++
++Use downloadPath through the API with an Authorization header. The storage key is not a public URL. For a web frontend, fetch the image with the bearer header and display a blob URL; a plain img src does not automatically attach a bearer token. Do not put access tokens in image URLs.
++
++## Manual test in PowerShell
++
++Start the API, log in as a stakeholder using the existing authentication flow, and choose an existing active product. Adjust the URL to match the address printed by your API.
++
++```powershell
++$api = "https://localhost:7126"
++$token = "PASTE_ACCESS_TOKEN"
++$productId = "PASTE_PRODUCT_GUID"
++$photoFile = "C:\Users\YourName\Pictures\product.jpg"
++$photoUrl = "$api/api/products/$productId/photos"
++curl.exe -i -X POST $photoUrl `
++  -H "Authorization: Bearer $token" `
++  -F "File=@$photoFile" -F "SortOrder=0"
++```
++
++Expect 201 and copy id from the response. Use a current token; refresh or log in again if it expires.
++
++```powershell
++$photoId = "PASTE_PHOTO_GUID"
++curl.exe -i $photoUrl -H "Authorization: Bearer $token"
++curl.exe "$photoUrl/$photoId/content" `
++  -H "Authorization: Bearer $token" --output downloaded.webp
++```
++
++Open downloaded.webp. Use ControllersTester/ProductPhotos.http to change order or delete. The delete should immediately hide the photo and make its content route return 404. Physical cleanup runs every minute and waits at least five minutes after deletion. Check existing product GET responses too: their photos collection now contains only ready, non-deleted photos.
++
++Repeat with a seller or manager token: list/download should work, and upload/order/delete should return 403. Try a text file renamed .jpg (400), an image over 5 MiB (400 within the multipart request limit, or 413 from the host for a larger request), a missing product (404), and an inactive product (409). Host/proxy body limits can reject a request before the controller.
++
++## Files and implementation
++
++- Domain/Entity/Main/ProductPhoto.cs: IsReady and DeletedAtUtc track publication and deletion.
++- Application/Interfaces/Services/IProductPhotoService.cs and IProductPhotoStorage.cs: separate workflow and storage contracts.
++- Application/DTOs/Products: shared photo metadata mapping, upload result and download content contracts.
++- Application/Common/ProductPhotoLimits.cs: request, image size and pixel limits.
++- Application/Services/ProductService.cs: exposes only ready, non-deleted photos.
++- Infrastructure/Photos/ProductPhotoProcessor.cs: image validation, orientation, resizing and WebP encoding with SkiaSharp.
++- Infrastructure/Storage: Local and S3 adapters, options, generated-key validation and bounded reads.
++- Infrastructure/Services/ProductPhotoService.cs: upload publication, metadata reads, integrity checking, ordering and deletion.
++- Infrastructure/Services/ProductPhotoCleanupWorker.cs: retryable background cleanup.
++- Infrastructure/Extension/ProductPhotoRegistration.cs: provider selection and dependency injection; called by AddMarketInfrastructure.
++- Infrastructure/Persistence/Configurations/ProductPhotoConfiguration.cs and Migrations: two columns and cleanup index, plus updated model snapshot.
++- Api/Models and Controllers/ProductPhotosController.cs: request validation, role permissions and HTTP responses.
++- Api/ControllersTester/ProductPhotos.http: manual requests; existing metadata tester updated.
++- tests/MarketApp.Photos.Tests and MarketApp.sln: photo integration test project and solution registration.
++
++Project prefixes above mean src/MarketApp.Domain, src/MarketApp.Application, src/MarketApp.Infrastructure and src/MarketApp.Api respectively. The migration is 20261004094238_CompleteProductPhotoStorage. Infrastructure adds SkiaSharp 4.153.1, its Linux native assets package, and AWSSDK.S3 4.0.104.1. Final code uses SkiaSharp, not the earlier ImageSharp draft.
++
++## Failure handling
++
++Upload first saves a pending database row, then stores normalized bytes, then conditionally marks the row ready. A storage failure leaves a recoverable record but no visible photo. A delete arriving during upload prevents publication. Download compares byte length and SHA-256 against metadata; corrupt content produces a safe server error and a diagnostic log.
++
++Deletion marks DeletedAtUtc immediately. The worker processes up to 25 eligible records per minute after a five-minute grace period. It deletes the file/object before deleting its metadata. A failure leaves the record for retry. Pending uploads older than one hour are marked for the same cleanup. The worker requires the API process to be running, so physical cleanup may take longer under backlog or outages. Do not automatically retry an ambiguous successful upload without first refreshing the photo list, because a second upload can create a duplicate.
++
++The migration defaults IsReady to false. Existing metadata-only rows are therefore hidden and eventually cleaned if still pending. If you manually created real photo records outside the earlier metadata step, reconcile their files and state before deploying this migration.
++
++## Verification and remaining deployment checks
++
++Verified on 4 October 2026 with .NET SDK 10.0.401:
++
++- Full solution build: 0 warnings, 0 errors.
++- Existing transfer pricing tests: 13 passed.
++- New photo workflow tests: 14 passed, covering input formats, resizing, JPEG rotation, conditional GET, roles, invalid files, inactive/missing products, ordering, deletion retries, interrupted uploads, traversal/overwrite rejection and corrupt content.
++- EF model check: no pending model changes; PostgreSQL migration SQL generated successfully.
++
++Photo tests run real controllers, photo services, SkiaSharp and local file storage through ASP.NET TestServer, with a SQLite database and test authentication. They do not validate production PostgreSQL constraints, real JWT/session integration, a live S3 bucket, or Windows native-library loading. Run the manual checks against your configured API after applying the migration. No database update or cloud deployment was performed here.
++
++## Offline client and next work
++
++The future desktop application can cache downloaded WebP files locally, keyed by photo id and contentHash, and reconcile its cache with the current photo list when connected. It can show cached images without internet; an uncached image needs a placeholder until the next download. This API step does not implement that desktop cache. There is one authoritative image in server storage, with a local cache on each device when the desktop app is built.
++
++This autonomous implementation ends with the photo feature. Subsequent API work returns to showing you code and steps for you to apply. Full API and usage documentation remains planned after the complete API project is finished.
+diff --git a/src/MarketApp.Api/Controllers/ProductPhotosController.cs b/src/MarketApp.Api/Controllers/ProductPhotosController.cs
+new file mode 100644
+index 0000000..71ce5b6
+--- /dev/null
++++ b/src/MarketApp.Api/Controllers/ProductPhotosController.cs
+@@ -0,0 +1,82 @@
++using MarketApp.Api.Models;
++using MarketApp.Application.Common;
++using MarketApp.Application.Common.Security;
++using MarketApp.Application.DTOs.Products;
++using MarketApp.Application.Interfaces.Services;
++using Microsoft.AspNetCore.Authorization;
++using Microsoft.AspNetCore.Mvc;
++using Microsoft.Net.Http.Headers;
++
++namespace MarketApp.Api.Controllers;
++
++// Photos are shared catalog data, not branch pricing or stock data.
++[ApiController]
++[Route("api/products/{productId:guid}/photos")]
++[Authorize(Policy = "AuthenticatedUser", Roles = AppRoles.Stakeholder + "," + AppRoles.BranchManager + "," + AppRoles.Seller)]
++public class ProductPhotosController(IProductPhotoService photoService) : ControllerBase
++{
++    [HttpGet]
++    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
++    public async Task<IActionResult> GetList(Guid productId, CancellationToken cancellationToken)
++    {
++        var photos = await photoService.GetListAsync(productId, cancellationToken);
++        return photos is null ? NotFound() : Ok(photos);
++    }
++
++    [HttpGet("{photoId:guid}/content")]
++    public async Task<IActionResult> GetContent(Guid productId, Guid photoId, CancellationToken cancellationToken)
++    {
++        var content = await photoService.GetContentAsync(productId, photoId, cancellationToken);
++        if (content is null) return NotFound();
++        Response.Headers.CacheControl = "private, no-cache";
++        Response.Headers["X-Content-Type-Options"] = "nosniff";
++        return new FileContentResult(content.Bytes, content.ContentType)
++        {
++            EntityTag = new EntityTagHeaderValue($"\"{content.ContentHash}\""),
++            LastModified = new DateTimeOffset(content.CreatedAtUtc)
++        };
++    }
++
++    [HttpPost]
++    [Authorize(Roles = AppRoles.Stakeholder)]
++    [Consumes("multipart/form-data")]
++    [RequestSizeLimit(ProductPhotoLimits.MaximumRequestBytes)]
++    [RequestFormLimits(MultipartBodyLengthLimit = ProductPhotoLimits.MaximumRequestBytes)]
++    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
++    public async Task<IActionResult> Upload(Guid productId, [FromForm] UploadProductPhotoRequest request,
++        CancellationToken cancellationToken)
++    {
++        if (request.File is null || request.File.Length == 0 || request.File.Length > ProductPhotoLimits.MaximumFileBytes)
++            return Problem(statusCode: 400, title: "Invalid photo.", detail: "Choose an image between 1 byte and 5 MB.");
++
++        await using var input = request.File.OpenReadStream();
++        var result = await photoService.UploadAsync(productId, input, request.SortOrder, cancellationToken);
++        if (result.Status == PhotoUploadStatus.Success)
++            return CreatedAtAction(nameof(GetContent), new { productId, photoId = result.Photo!.Id }, result.Photo);
++
++        var statusCode = result.Status switch
++        {
++            PhotoUploadStatus.NotFound => 404,
++            PhotoUploadStatus.Conflict => 409,
++            _ => 400
++        };
++        return Problem(statusCode: statusCode, title: "Photo upload could not be completed.", detail: result.Error);
++    }
++
++    [HttpPut("{photoId:guid}/order")]
++    [Authorize(Roles = AppRoles.Stakeholder)]
++    public async Task<IActionResult> SetOrder(Guid productId, Guid photoId,
++        [FromBody] UpdateProductPhotoOrderRequest request, CancellationToken cancellationToken)
++    {
++        var updated = await photoService.SetSortOrderAsync(productId, photoId, request.SortOrder!.Value, cancellationToken);
++        return updated ? NoContent() : NotFound();
++    }
++
++    [HttpDelete("{photoId:guid}")]
++    [Authorize(Roles = AppRoles.Stakeholder)]
++    public async Task<IActionResult> Delete(Guid productId, Guid photoId, CancellationToken cancellationToken)
++    {
++        await photoService.DeleteAsync(productId, photoId, cancellationToken);
++        return NoContent();
++    }
++}
+diff --git a/src/MarketApp.Api/ControllersTester/ProductPhotoMetadata.http b/src/MarketApp.Api/ControllersTester/ProductPhotoMetadata.http
+index d497a30..19866b6 100644
+--- a/src/MarketApp.Api/ControllersTester/ProductPhotoMetadata.http
++++ b/src/MarketApp.Api/ControllersTester/ProductPhotoMetadata.http
+@@ -2,7 +2,7 @@
+ @token = PASTE_STAKEHOLDER_ACCESS_TOKEN
+ @productId = 00000000-0000-0000-0000-000000000000
+ 
+-### Existing product: expect 200 and a photos array (currently empty)
++### Existing product: expect 200 and a photos array
+ GET {{host}}/api/products/{{productId}}
+ Authorization: Bearer {{token}}
+ 
+@@ -10,5 +10,5 @@ Authorization: Bearer {{token}}
+ GET {{host}}/api/products?pageNumber=1&pageSize=20
+ Authorization: Bearer {{token}}
+ 
+-# Upload/download endpoints will be added in the next step.
+-# Existing Products.http create/update requests should also return photos: [].
++# For upload/download/order/delete, see ProductPhotos.http and docs/product-photos.md.
++# Only completed, non-deleted uploads appear in the photos collection.
+diff --git a/src/MarketApp.Api/ControllersTester/ProductPhotos.http b/src/MarketApp.Api/ControllersTester/ProductPhotos.http
+new file mode 100644
+index 0000000..8d2d2d9
+--- /dev/null
++++ b/src/MarketApp.Api/ControllersTester/ProductPhotos.http
+@@ -0,0 +1,26 @@
++@host = https://localhost:7126
++@token = PASTE_STAKEHOLDER_ACCESS_TOKEN
++@productId = 00000000-0000-0000-0000-000000000000
++@photoId = 00000000-0000-0000-0000-000000000000
++
++### List ready photos in display order
++GET {{host}}/api/products/{{productId}}/photos
++Authorization: Bearer {{token}}
++
++### Download a photo with your current access token
++GET {{host}}/api/products/{{productId}}/photos/{{photoId}}/content
++Authorization: Bearer {{token}}
++
++### Change order as stakeholder
++PUT {{host}}/api/products/{{productId}}/photos/{{photoId}}/order
++Authorization: Bearer {{token}}
++Content-Type: application/json
++
++{ "sortOrder": 0 }
++
++### Delete as stakeholder; repeat is safe
++DELETE {{host}}/api/products/{{productId}}/photos/{{photoId}}
++Authorization: Bearer {{token}}
++
++# Upload is multipart/form-data. See docs/product-photos.md for curl.exe examples.
++# Use Seller / BranchManager tokens to confirm reads succeed and writes return 403.
+diff --git a/src/MarketApp.Api/Models/ProductPhotoRequests.cs b/src/MarketApp.Api/Models/ProductPhotoRequests.cs
+new file mode 100644
+index 0000000..6950a39
+--- /dev/null
++++ b/src/MarketApp.Api/Models/ProductPhotoRequests.cs
+@@ -0,0 +1,19 @@
++using System.ComponentModel.DataAnnotations;
++
++namespace MarketApp.Api.Models;
++
++public class UploadProductPhotoRequest
++{
++    [Required]
++    public IFormFile File { get; set; } = null!;
++
++    [Range(0, int.MaxValue)]
++    public int SortOrder { get; set; }
++}
++
++public class UpdateProductPhotoOrderRequest
++{
++    [Required]
++    [Range(0, int.MaxValue)]
++    public int? SortOrder { get; set; }
++}
+diff --git a/src/MarketApp.Application/Common/ProductPhotoLimits.cs b/src/MarketApp.Application/Common/ProductPhotoLimits.cs
+new file mode 100644
+index 0000000..143dba8
+--- /dev/null
++++ b/src/MarketApp.Application/Common/ProductPhotoLimits.cs
+@@ -0,0 +1,9 @@
++namespace MarketApp.Application.Common;
++
++public static class ProductPhotoLimits
++{
++    public const int MaximumFileBytes = 5 * 1024 * 1024;
++    public const long MaximumRequestBytes = 6L * 1024 * 1024;
++    public const long MaximumPixels = 20_000_000;
++    public const int MaximumDisplaySize = 1600;
++}
+diff --git a/src/MarketApp.Application/DTOs/Products/PhotoUploadResult.cs b/src/MarketApp.Application/DTOs/Products/PhotoUploadResult.cs
+new file mode 100644
+index 0000000..3729371
+--- /dev/null
++++ b/src/MarketApp.Application/DTOs/Products/PhotoUploadResult.cs
+@@ -0,0 +1,20 @@
++namespace MarketApp.Application.DTOs.Products;
++
++public enum PhotoUploadStatus
++{
++    Success,
++    InvalidRequest,
++    NotFound,
++    Conflict
++}
++
++public record PhotoUploadResult(
++    PhotoUploadStatus Status,
++    ProductPhotoDto? Photo = null,
++    string? Error = null);
++
++public record ProductPhotoContent(
++    byte[] Bytes,
++    string ContentType,
++    string ContentHash,
++    DateTime CreatedAtUtc);
+diff --git a/src/MarketApp.Application/DTOs/Products/ProductPhotoDto.cs b/src/MarketApp.Application/DTOs/Products/ProductPhotoDto.cs
+index 494fcf6..3b5eed7 100644
+--- a/src/MarketApp.Application/DTOs/Products/ProductPhotoDto.cs
++++ b/src/MarketApp.Application/DTOs/Products/ProductPhotoDto.cs
+@@ -1,3 +1,5 @@
++using MarketApp.Domain.Entity.Main;
++
+ namespace MarketApp.Application.DTOs.Products;
+ 
+ public record ProductPhotoDto(
+@@ -7,4 +9,14 @@ public record ProductPhotoDto(
+     long FileSizeBytes,
+     string ContentHash,
+     int SortOrder,
+-    DateTime CreatedAtUtc);
++    DateTime CreatedAtUtc)
++{
++    public string DownloadPath { get; init; } = string.Empty;
++
++    public static ProductPhotoDto FromEntity(ProductPhoto photo) => new(
++        photo.Id, photo.StorageKey, photo.ContentType, photo.FileSizeBytes,
++        photo.ContentHash, photo.SortOrder, photo.CreatedAtUtc)
++    {
++        DownloadPath = $"/api/products/{photo.ProductId}/photos/{photo.Id}/content"
++    };
++}
+diff --git a/src/MarketApp.Application/Interfaces/Services/IProductPhotoService.cs b/src/MarketApp.Application/Interfaces/Services/IProductPhotoService.cs
+new file mode 100644
+index 0000000..e1169fa
+--- /dev/null
++++ b/src/MarketApp.Application/Interfaces/Services/IProductPhotoService.cs
+@@ -0,0 +1,21 @@
++using MarketApp.Application.DTOs.Products;
++
++namespace MarketApp.Application.Interfaces.Services;
++
++public interface IProductPhotoService
++{
++    Task<IReadOnlyList<ProductPhotoDto>?> GetListAsync(Guid productId,
++        CancellationToken cancellationToken = default);
++
++    Task<ProductPhotoContent?> GetContentAsync(Guid productId, Guid photoId,
++        CancellationToken cancellationToken = default);
++
++    Task<PhotoUploadResult> UploadAsync(Guid productId, Stream input, int sortOrder,
++        CancellationToken cancellationToken = default);
++
++    Task<bool> SetSortOrderAsync(Guid productId, Guid photoId, int sortOrder,
++        CancellationToken cancellationToken = default);
++
++    Task DeleteAsync(Guid productId, Guid photoId,
++        CancellationToken cancellationToken = default);
++}
+diff --git a/src/MarketApp.Application/Interfaces/Services/IProductPhotoStorage.cs b/src/MarketApp.Application/Interfaces/Services/IProductPhotoStorage.cs
+new file mode 100644
+index 0000000..1e9888e
+--- /dev/null
++++ b/src/MarketApp.Application/Interfaces/Services/IProductPhotoStorage.cs
+@@ -0,0 +1,14 @@
++namespace MarketApp.Application.Interfaces.Services;
++
++public interface IProductPhotoStorage
++{
++    Task PutAsync(string storageKey, byte[] bytes, string contentType,
++        CancellationToken cancellationToken = default);
++
++    Task<byte[]?> ReadAsync(string storageKey,
++        CancellationToken cancellationToken = default);
++
++    // Must succeed if the stored file is already absent.
++    Task DeleteAsync(string storageKey,
++        CancellationToken cancellationToken = default);
++}
+diff --git a/src/MarketApp.Application/Services/ProductService.cs b/src/MarketApp.Application/Services/ProductService.cs
+index ba7dbb8..1ebb0c3 100644
+--- a/src/MarketApp.Application/Services/ProductService.cs
++++ b/src/MarketApp.Application/Services/ProductService.cs
+@@ -163,16 +163,10 @@ public class ProductService : IProductService
+             categoryName)
+         {
+             Photos = product.Photos
++                .Where(photo => photo.IsReady && photo.DeletedAtUtc == null)
+                 .OrderBy(photo => photo.SortOrder)
+                 .ThenBy(photo => photo.Id)
+-                .Select(photo => new ProductPhotoDto(
+-                    photo.Id,
+-                    photo.StorageKey,
+-                    photo.ContentType,
+-                    photo.FileSizeBytes,
+-                    photo.ContentHash,
+-                    photo.SortOrder,
+-                    photo.CreatedAtUtc))
++                .Select(ProductPhotoDto.FromEntity)
+                 .ToList()
+         };
+     }
+diff --git a/src/MarketApp.Domain/Entity/Main/ProductPhoto.cs b/src/MarketApp.Domain/Entity/Main/ProductPhoto.cs
+index 93ce83e..1b09b14 100644
+--- a/src/MarketApp.Domain/Entity/Main/ProductPhoto.cs
++++ b/src/MarketApp.Domain/Entity/Main/ProductPhoto.cs
+@@ -22,4 +22,10 @@ public class ProductPhoto
+     public int SortOrder { get; set; }
+ 
+     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
++
++    // Pending uploads are not visible to clients.
++    public bool IsReady { get; set; }
++
++    // Hide immediately; storage deletion is retried by the cleanup worker.
++    public DateTime? DeletedAtUtc { get; set; }
+ }
+diff --git a/src/MarketApp.Infrastructure/Extension/ProductPhotoRegistration.cs b/src/MarketApp.Infrastructure/Extension/ProductPhotoRegistration.cs
+new file mode 100644
+index 0000000..780e02f
+--- /dev/null
++++ b/src/MarketApp.Infrastructure/Extension/ProductPhotoRegistration.cs
+@@ -0,0 +1,46 @@
++using Amazon;
++using Amazon.Runtime;
++using Amazon.S3;
++using MarketApp.Application.Interfaces.Services;
++using MarketApp.Infrastructure.Services;
++using MarketApp.Infrastructure.Storage;
++using Microsoft.Extensions.Configuration;
++using Microsoft.Extensions.DependencyInjection;
++
++namespace MarketApp.Infrastructure.Extension;
++
++public static class ProductPhotoRegistration
++{
++    public static IServiceCollection AddProductPhotos(this IServiceCollection services, IConfiguration configuration)
++    {
++        var options = configuration.GetSection("PhotoStorage").Get<PhotoStorageOptions>() ?? new();
++        services.AddSingleton(options);
++        if (string.Equals(options.Provider, "Local", StringComparison.OrdinalIgnoreCase))
++        {
++            services.AddSingleton<IProductPhotoStorage, LocalProductPhotoStorage>();
++        }
++        else if (string.Equals(options.Provider, "S3", StringComparison.OrdinalIgnoreCase))
++        {
++            if (string.IsNullOrWhiteSpace(options.BucketName) || string.IsNullOrWhiteSpace(options.Region))
++                throw new InvalidOperationException("PhotoStorage:BucketName and Region are required for S3.");
++            var hasAccessKey = !string.IsNullOrWhiteSpace(options.AccessKeyId);
++            var hasSecretKey = !string.IsNullOrWhiteSpace(options.SecretAccessKey);
++            if (hasAccessKey != hasSecretKey)
++                throw new InvalidOperationException("Provide both S3 access credentials or neither.");
++            services.AddSingleton<IAmazonS3>(_ =>
++            {
++                var region = RegionEndpoint.GetBySystemName(options.Region);
++                return hasAccessKey
++                    ? new AmazonS3Client(new BasicAWSCredentials(options.AccessKeyId, options.SecretAccessKey), region)
++                    : new AmazonS3Client(region);
++            });
++            services.AddSingleton<IProductPhotoStorage, S3ProductPhotoStorage>();
++        }
++        else throw new InvalidOperationException("PhotoStorage:Provider must be Local or S3.");
++
++        services.AddScoped<ProductPhotoService>();
++        services.AddScoped<IProductPhotoService>(provider => provider.GetRequiredService<ProductPhotoService>());
++        services.AddHostedService<ProductPhotoCleanupWorker>();
++        return services;
++    }
++}
+diff --git a/src/MarketApp.Infrastructure/Extension/ServiceCollectionsExtension.cs b/src/MarketApp.Infrastructure/Extension/ServiceCollectionsExtension.cs
+index 5c47f65..6b9ef13 100644
+--- a/src/MarketApp.Infrastructure/Extension/ServiceCollectionsExtension.cs
++++ b/src/MarketApp.Infrastructure/Extension/ServiceCollectionsExtension.cs
+@@ -114,6 +114,8 @@ public static class ServiceCollectionsExtension
+         services.AddScoped<IUserManagementService, UserManagementService>();
+         services.AddScoped<IBranchAccessService, BranchAccessService>();
+ 
++        services.AddProductPhotos(configuration);
++
+         return services;
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/src/MarketApp.Infrastructure/MarketApp.Infrastructure.csproj b/src/MarketApp.Infrastructure/MarketApp.Infrastructure.csproj
+index 56a8ebf..0eafd2d 100644
+--- a/src/MarketApp.Infrastructure/MarketApp.Infrastructure.csproj
++++ b/src/MarketApp.Infrastructure/MarketApp.Infrastructure.csproj
+@@ -1,6 +1,9 @@
+ ﻿<Project Sdk="Microsoft.NET.Sdk">
+ 
+   <ItemGroup>
++    <PackageReference Include="SkiaSharp" Version="4.153.1" />
++    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.153.1" />
++    <PackageReference Include="AWSSDK.S3" Version="4.0.104.1" />
+     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
+     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.12" />
+     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
+diff --git a/src/MarketApp.Infrastructure/Migrations/20261004094238_CompleteProductPhotoStorage.Designer.cs b/src/MarketApp.Infrastructure/Migrations/20261004094238_CompleteProductPhotoStorage.Designer.cs
+new file mode 100644
+index 0000000..d3c0ca4
+--- /dev/null
++++ b/src/MarketApp.Infrastructure/Migrations/20261004094238_CompleteProductPhotoStorage.Designer.cs
+@@ -0,0 +1,1324 @@
++﻿// <auto-generated />
++using System;
++using MarketApp.Infrastructure.Persistence;
++using Microsoft.EntityFrameworkCore;
++using Microsoft.EntityFrameworkCore.Infrastructure;
++using Microsoft.EntityFrameworkCore.Migrations;
++using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
++using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
++
++#nullable disable
++
++namespace MarketApp.Infrastructure.Migrations
++{
++    [DbContext(typeof(AppDbContext))]
++    [Migration("20261004094238_CompleteProductPhotoStorage")]
++    partial class CompleteProductPhotoStorage
++    {
++        /// <inheritdoc />
++        protected override void BuildTargetModel(ModelBuilder modelBuilder)
++        {
++#pragma warning disable 612, 618
++            modelBuilder
++                .HasAnnotation("ProductVersion", "10.0.12")
++                .HasAnnotation("Relational:MaxIdentifierLength", 63);
++
++            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockBalance", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("InventoryLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("Quantity")
++                        .HasPrecision(18, 3)
++                        .HasColumnType("numeric(18,3)");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("InventoryLocationId");
++
++                    b.HasIndex("ProductId", "InventoryLocationId")
++                        .IsUnique()
++                        .HasDatabaseName("UX_StockBalances_Product_Location");
++
++                    b.ToTable("StockBalances", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_StockBalances_Quantity_NonNegative", "\"Quantity\" >= 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockMovement", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("InventoryLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("MovementType")
++                        .HasColumnType("integer");
++
++                    b.Property<DateTime>("OccurredAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid?>("PurchaseInvoiceLineId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("QuantityChange")
++                        .HasPrecision(18, 3)
++                        .HasColumnType("numeric(18,3)");
++
++                    b.Property<Guid?>("StockTransferLineId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("InventoryLocationId");
++
++                    b.HasIndex("PurchaseInvoiceLineId")
++                        .IsUnique()
++                        .HasDatabaseName("UX_StockMovements_PurchaseInvoiceLine")
++                        .HasFilter("\"PurchaseInvoiceLineId\" IS NOT NULL");
++
++                    b.HasIndex("StockTransferLineId", "MovementType")
++                        .IsUnique()
++                        .HasDatabaseName("UX_StockMovements_TransferLine_Type")
++                        .HasFilter("\"StockTransferLineId\" IS NOT NULL");
++
++                    b.HasIndex("ProductId", "InventoryLocationId", "OccurredAtUtc", "Id")
++                        .HasDatabaseName("IX_StockMovements_Product_Location_History");
++
++                    b.ToTable("StockMovements", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_StockMovements_Source", "(\"MovementType\" = 1 AND \"PurchaseInvoiceLineId\" IS NOT NULL AND \"StockTransferLineId\" IS NULL) OR (\"MovementType\" IN (2, 3, 4) AND \"PurchaseInvoiceLineId\" IS NULL AND \"StockTransferLineId\" IS NOT NULL)");
++
++                            t.HasCheckConstraint("CK_StockMovements_TypeAndQuantity", "(\"MovementType\" IN (1, 3, 4) AND \"QuantityChange\" > 0) OR (\"MovementType\" = 2 AND \"QuantityChange\" < 0)");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockTransfer", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("DestinationLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Notes")
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<string>("Number")
++                        .IsRequired()
++                        .HasMaxLength(40)
++                        .HasColumnType("character varying(40)");
++
++                    b.Property<DateTime?>("ReceivedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("ReturnReason")
++                        .HasMaxLength(500)
++                        .HasColumnType("character varying(500)");
++
++                    b.Property<DateTime?>("ReturnRequestedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime?>("ReturnedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime?>("ShippedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("SourceLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("Status")
++                        .HasColumnType("integer");
++
++                    b.Property<DateTime>("UpdatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("DestinationLocationId");
++
++                    b.HasIndex("Number")
++                        .IsUnique();
++
++                    b.HasIndex("SourceLocationId");
++
++                    b.ToTable("StockTransfers", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_StockTransfers_DifferentLocations", "\"SourceLocationId\" <> \"DestinationLocationId\"");
++
++                            t.HasCheckConstraint("CK_StockTransfers_ReturnDetails", "(\"Status\" IN (1, 2, 3, 4) AND \"ReturnRequestedAtUtc\" IS NULL AND \"ReturnedAtUtc\" IS NULL AND \"ReturnReason\" IS NULL) OR (\"Status\" = 5 AND \"ReturnRequestedAtUtc\" IS NOT NULL AND \"ReturnRequestedAtUtc\" >= \"ShippedAtUtc\" AND \"ReturnedAtUtc\" IS NULL AND \"ReturnReason\" IS NOT NULL AND length(btrim(\"ReturnReason\")) > 0) OR (\"Status\" = 6 AND \"ReturnRequestedAtUtc\" IS NOT NULL AND \"ReturnRequestedAtUtc\" >= \"ShippedAtUtc\" AND \"ReturnedAtUtc\" IS NOT NULL AND \"ReturnedAtUtc\" >= \"ReturnRequestedAtUtc\" AND \"ReturnReason\" IS NOT NULL AND length(btrim(\"ReturnReason\")) > 0)");
++
++                            t.HasCheckConstraint("CK_StockTransfers_Status", "\"Status\" IN (1, 2, 3, 4, 5, 6)");
++
++                            t.HasCheckConstraint("CK_StockTransfers_StatusTimestamps", "(\"Status\" IN (1, 4) AND \"ShippedAtUtc\" IS NULL AND \"ReceivedAtUtc\" IS NULL) OR (\"Status\" IN (2, 5, 6) AND \"ShippedAtUtc\" IS NOT NULL AND \"ReceivedAtUtc\" IS NULL) OR (\"Status\" = 3 AND \"ShippedAtUtc\" IS NOT NULL AND \"ReceivedAtUtc\" IS NOT NULL AND \"ReceivedAtUtc\" >= \"ShippedAtUtc\")");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockTransferLine", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<int?>("BaselineRevisionAtCreation")
++                        .HasColumnType("integer");
++
++                    b.Property<decimal>("BaselineUnitPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<int>("LineNumber")
++                        .HasColumnType("integer");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("Quantity")
++                        .HasPrecision(18, 3)
++                        .HasColumnType("numeric(18,3)");
++
++                    b.Property<Guid>("StockTransferId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("ProductId");
++
++                    b.HasIndex("StockTransferId", "LineNumber")
++                        .IsUnique()
++                        .HasDatabaseName("UX_StockTransferLines_Transfer_Line");
++
++                    b.ToTable("StockTransferLines", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_StockTransferLines_BaselineRevisionAtCreation", "\"BaselineRevisionAtCreation\" IS NULL OR \"BaselineRevisionAtCreation\" >= 0");
++
++                            t.HasCheckConstraint("CK_StockTransferLines_BaselineUnitPrice", "\"BaselineUnitPrice\" >= 0");
++
++                            t.HasCheckConstraint("CK_StockTransferLines_LineNumber", "\"LineNumber\" > 0");
++
++                            t.HasCheckConstraint("CK_StockTransferLines_Quantity", "\"Quantity\" > 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Branch", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Address")
++                        .HasMaxLength(300)
++                        .HasColumnType("character varying(300)");
++
++                    b.Property<string>("Code")
++                        .IsRequired()
++                        .HasMaxLength(32)
++                        .HasColumnType("character varying(32)");
++
++                    b.Property<bool>("IsActive")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("Name")
++                        .IsRequired()
++                        .HasMaxLength(100)
++                        .HasColumnType("character varying(100)");
++
++                    b.Property<string>("Phone")
++                        .HasMaxLength(30)
++                        .HasColumnType("character varying(30)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("Code")
++                        .IsUnique();
++
++                    b.ToTable("Branches", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Category", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Name")
++                        .IsRequired()
++                        .HasMaxLength(100)
++                        .HasColumnType("character varying(100)");
++
++                    b.HasKey("Id");
++
++                    b.ToTable("Categories", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.InventoryLocation", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid?>("BranchId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Code")
++                        .IsRequired()
++                        .HasMaxLength(32)
++                        .HasColumnType("character varying(32)");
++
++                    b.Property<bool>("IsActive")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("Name")
++                        .IsRequired()
++                        .HasMaxLength(100)
++                        .HasColumnType("character varying(100)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("BranchId");
++
++                    b.HasIndex("Code")
++                        .IsUnique();
++
++                    b.ToTable("InventoryLocations", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Product", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("CategoryId")
++                        .HasColumnType("uuid");
++
++                    b.Property<bool>("IsActive")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("Name")
++                        .IsRequired()
++                        .HasMaxLength(200)
++                        .HasColumnType("character varying(200)");
++
++                    b.Property<string>("Sku")
++                        .IsRequired()
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("CategoryId");
++
++                    b.HasIndex("Sku")
++                        .IsUnique();
++
++                    b.ToTable("Products", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.ProductPhoto", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("ContentHash")
++                        .IsRequired()
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.Property<string>("ContentType")
++                        .IsRequired()
++                        .HasMaxLength(32)
++                        .HasColumnType("character varying(32)");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime?>("DeletedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<long>("FileSizeBytes")
++                        .HasColumnType("bigint");
++
++                    b.Property<bool>("IsReady")
++                        .HasColumnType("boolean");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("SortOrder")
++                        .HasColumnType("integer");
++
++                    b.Property<string>("StorageKey")
++                        .IsRequired()
++                        .HasMaxLength(512)
++                        .HasColumnType("character varying(512)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("StorageKey")
++                        .IsUnique()
++                        .HasDatabaseName("UX_ProductPhotos_StorageKey");
++
++                    b.HasIndex("IsReady", "DeletedAtUtc", "CreatedAtUtc");
++
++                    b.HasIndex("ProductId", "SortOrder", "Id");
++
++                    b.ToTable("ProductPhotos", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_ProductPhotos_ContentHash", "\"ContentHash\" ~ '^[0-9A-F]{64}$'");
++
++                            t.HasCheckConstraint("CK_ProductPhotos_ContentType", "\"ContentType\" IN ('image/jpeg', 'image/png', 'image/webp')");
++
++                            t.HasCheckConstraint("CK_ProductPhotos_FileSizeBytes", "\"FileSizeBytes\" > 0");
++
++                            t.HasCheckConstraint("CK_ProductPhotos_SortOrder", "\"SortOrder\" >= 0");
++
++                            t.HasCheckConstraint("CK_ProductPhotos_StorageKey", "length(btrim(\"StorageKey\")) > 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Supplier", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Address")
++                        .HasMaxLength(300)
++                        .HasColumnType("character varying(300)");
++
++                    b.Property<string>("Code")
++                        .IsRequired()
++                        .HasMaxLength(32)
++                        .HasColumnType("character varying(32)");
++
++                    b.Property<string>("Email")
++                        .HasMaxLength(254)
++                        .HasColumnType("character varying(254)");
++
++                    b.Property<bool>("IsActive")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("Name")
++                        .IsRequired()
++                        .HasMaxLength(150)
++                        .HasColumnType("character varying(150)");
++
++                    b.Property<string>("Phone")
++                        .HasMaxLength(30)
++                        .HasColumnType("character varying(30)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("Code")
++                        .IsUnique();
++
++                    b.ToTable("Suppliers", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Pricing.BranchProductPrice", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("BaselineRevision")
++                        .HasColumnType("integer");
++
++                    b.Property<decimal?>("BaselineUnitPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<Guid>("BranchId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal?>("MinimumSellingPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("Revision")
++                        .HasColumnType("integer");
++
++                    b.Property<DateTime>("UpdatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("ProductId");
++
++                    b.HasIndex("BranchId", "ProductId")
++                        .IsUnique()
++                        .HasDatabaseName("UX_BranchProductPrices_Branch_Product");
++
++                    b.ToTable("BranchProductPrices", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_BranchProductPrices_Baseline", "\"BaselineUnitPrice\" IS NULL OR \"BaselineUnitPrice\" >= 0");
++
++                            t.HasCheckConstraint("CK_BranchProductPrices_BaselineRevision", "\"BaselineRevision\" >= 0 AND \"BaselineRevision\" <= \"Revision\" AND ((\"BaselineUnitPrice\" IS NULL AND \"BaselineRevision\" = 0) OR (\"BaselineUnitPrice\" IS NOT NULL AND \"BaselineRevision\" > 0))");
++
++                            t.HasCheckConstraint("CK_BranchProductPrices_HasPrice", "\"BaselineUnitPrice\" IS NOT NULL OR \"MinimumSellingPrice\" IS NOT NULL");
++
++                            t.HasCheckConstraint("CK_BranchProductPrices_Minimum", "\"MinimumSellingPrice\" IS NULL OR \"MinimumSellingPrice\" >= 0");
++
++                            t.HasCheckConstraint("CK_BranchProductPrices_Revision", "\"Revision\" > 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Pricing.BranchProductPriceHistory", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("BranchProductPriceId")
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("ChangeType")
++                        .HasColumnType("integer");
++
++                    b.Property<DateTime>("ChangedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid?>("ChangedByUserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal?>("NewBaselineUnitPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<decimal?>("NewMinimumSellingPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<decimal?>("OldBaselineUnitPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<decimal?>("OldMinimumSellingPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<string>("Reason")
++                        .IsRequired()
++                        .HasMaxLength(500)
++                        .HasColumnType("character varying(500)");
++
++                    b.Property<int>("Revision")
++                        .HasColumnType("integer");
++
++                    b.Property<Guid?>("StockTransferLineId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("StockTransferLineId");
++
++                    b.HasIndex("BranchProductPriceId", "Revision")
++                        .IsUnique()
++                        .HasDatabaseName("UX_BranchPriceHistory_Price_Revision");
++
++                    b.ToTable("BranchProductPriceHistory", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_BranchPriceHistory_HasNewPrice", "\"NewBaselineUnitPrice\" IS NOT NULL OR \"NewMinimumSellingPrice\" IS NOT NULL");
++
++                            t.HasCheckConstraint("CK_BranchPriceHistory_Prices", "(\"OldBaselineUnitPrice\" IS NULL OR \"OldBaselineUnitPrice\" >= 0) AND (\"NewBaselineUnitPrice\" IS NULL OR \"NewBaselineUnitPrice\" >= 0) AND (\"OldMinimumSellingPrice\" IS NULL OR \"OldMinimumSellingPrice\" >= 0) AND (\"NewMinimumSellingPrice\" IS NULL OR \"NewMinimumSellingPrice\" >= 0)");
++
++                            t.HasCheckConstraint("CK_BranchPriceHistory_Reason", "length(btrim(\"Reason\")) > 0");
++
++                            t.HasCheckConstraint("CK_BranchPriceHistory_Revision", "\"Revision\" > 0");
++
++                            t.HasCheckConstraint("CK_BranchPriceHistory_Source", "(\"ChangeType\" IN (1, 2) AND \"StockTransferLineId\" IS NULL) OR (\"ChangeType\" = 3 AND \"StockTransferLineId\" IS NOT NULL)");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoice", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("InventoryLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<DateOnly>("InvoiceDate")
++                        .HasColumnType("date");
++
++                    b.Property<string>("Notes")
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<string>("Number")
++                        .IsRequired()
++                        .HasMaxLength(40)
++                        .HasColumnType("character varying(40)");
++
++                    b.Property<DateTime?>("PostedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<int>("Status")
++                        .HasColumnType("integer");
++
++                    b.Property<Guid>("SupplierId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("SupplierInvoiceNumber")
++                        .HasMaxLength(100)
++                        .HasColumnType("character varying(100)");
++
++                    b.Property<DateTime>("UpdatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("InventoryLocationId");
++
++                    b.HasIndex("Number")
++                        .IsUnique();
++
++                    b.HasIndex("SupplierId");
++
++                    b.ToTable("PurchaseInvoices", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_PurchaseInvoices_PostedAt", "(\"Status\" = 1 AND \"PostedAtUtc\" IS NULL) OR (\"Status\" = 2 AND \"PostedAtUtc\" IS NOT NULL)");
++
++                            t.HasCheckConstraint("CK_PurchaseInvoices_Status", "\"Status\" IN (1, 2)");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoiceLine", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("LineNumber")
++                        .HasColumnType("integer");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("PurchaseInvoiceId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("Quantity")
++                        .HasPrecision(18, 3)
++                        .HasColumnType("numeric(18,3)");
++
++                    b.Property<decimal>("UnitCost")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("ProductId");
++
++                    b.HasIndex("PurchaseInvoiceId", "LineNumber")
++                        .IsUnique()
++                        .HasDatabaseName("UX_PurchaseInvoiceLines_Invoice_Line");
++
++                    b.ToTable("PurchaseInvoiceLines", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_PurchaseInvoiceLines_LineNumber", "\"LineNumber\" > 0");
++
++                            t.HasCheckConstraint("CK_PurchaseInvoiceLines_Quantity", "\"Quantity\" > 0");
++
++                            t.HasCheckConstraint("CK_PurchaseInvoiceLines_UnitCost", "\"UnitCost\" >= 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.ApplicationUser", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("AccessFailedCount")
++                        .HasColumnType("integer");
++
++                    b.Property<string>("ConcurrencyStamp")
++                        .IsConcurrencyToken()
++                        .HasColumnType("text");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("Email")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<bool>("EmailConfirmed")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("FullName")
++                        .IsRequired()
++                        .HasMaxLength(150)
++                        .HasColumnType("character varying(150)");
++
++                    b.Property<bool>("IsActive")
++                        .HasColumnType("boolean");
++
++                    b.Property<bool>("LockoutEnabled")
++                        .HasColumnType("boolean");
++
++                    b.Property<DateTimeOffset?>("LockoutEnd")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("NormalizedEmail")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<string>("NormalizedUserName")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<string>("PasswordHash")
++                        .HasColumnType("text");
++
++                    b.Property<string>("PhoneNumber")
++                        .HasColumnType("text");
++
++                    b.Property<bool>("PhoneNumberConfirmed")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("SecurityStamp")
++                        .HasColumnType("text");
++
++                    b.Property<bool>("TwoFactorEnabled")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("UserName")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("NormalizedEmail")
++                        .IsUnique()
++                        .HasDatabaseName("EmailIndex");
++
++                    b.HasIndex("NormalizedUserName")
++                        .IsUnique()
++                        .HasDatabaseName("UserNameIndex");
++
++                    b.ToTable("AspNetUsers", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.ApplicationUserBranch", b =>
++                {
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("BranchId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("UserId", "BranchId");
++
++                    b.HasIndex("BranchId");
++
++                    b.ToTable("UserBranchAssignments", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.AuthSession", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime>("ExpiresAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime?>("LastRefreshedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime?>("RevokedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("SecurityStamp")
++                        .IsRequired()
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("ExpiresAtUtc")
++                        .HasDatabaseName("IX_AuthSessions_Expiry");
++
++                    b.HasIndex("UserId", "ExpiresAtUtc")
++                        .HasDatabaseName("IX_AuthSessions_User_Expiry");
++
++                    b.ToTable("AuthSessions", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_AuthSessions_Expiry", "\"ExpiresAtUtc\" > \"CreatedAtUtc\"");
++
++                            t.HasCheckConstraint("CK_AuthSessions_LastRefresh", "\"LastRefreshedAtUtc\" IS NULL OR \"LastRefreshedAtUtc\" >= \"CreatedAtUtc\"");
++
++                            t.HasCheckConstraint("CK_AuthSessions_Revocation", "\"RevokedAtUtc\" IS NULL OR \"RevokedAtUtc\" >= \"CreatedAtUtc\"");
++
++                            t.HasCheckConstraint("CK_AuthSessions_SecurityStamp", "length(btrim(\"SecurityStamp\")) > 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.RefreshToken", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("AuthSessionId")
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime?>("ConsumedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime>("ExpiresAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("TokenHash")
++                        .IsRequired()
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("TokenHash")
++                        .IsUnique()
++                        .HasDatabaseName("UX_RefreshTokens_TokenHash");
++
++                    b.HasIndex("AuthSessionId", "CreatedAtUtc")
++                        .HasDatabaseName("IX_RefreshTokens_Session_Created");
++
++                    b.ToTable("RefreshTokens", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_RefreshTokens_Consumption", "\"ConsumedAtUtc\" IS NULL OR \"ConsumedAtUtc\" >= \"CreatedAtUtc\"");
++
++                            t.HasCheckConstraint("CK_RefreshTokens_Expiry", "\"ExpiresAtUtc\" > \"CreatedAtUtc\"");
++
++                            t.HasCheckConstraint("CK_RefreshTokens_Hash", "\"TokenHash\" ~ '^[0-9A-F]{64}$'");
++                        });
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("ConcurrencyStamp")
++                        .IsConcurrencyToken()
++                        .HasColumnType("text");
++
++                    b.Property<string>("Name")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<string>("NormalizedName")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("NormalizedName")
++                        .IsUnique()
++                        .HasDatabaseName("RoleNameIndex");
++
++                    b.ToTable("AspNetRoles", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
++                {
++                    b.Property<int>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("integer");
++
++                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
++
++                    b.Property<string>("ClaimType")
++                        .HasColumnType("text");
++
++                    b.Property<string>("ClaimValue")
++                        .HasColumnType("text");
++
++                    b.Property<Guid>("RoleId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("RoleId");
++
++                    b.ToTable("AspNetRoleClaims", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
++                {
++                    b.Property<int>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("integer");
++
++                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
++
++                    b.Property<string>("ClaimType")
++                        .HasColumnType("text");
++
++                    b.Property<string>("ClaimValue")
++                        .HasColumnType("text");
++
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("UserId");
++
++                    b.ToTable("AspNetUserClaims", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
++                {
++                    b.Property<string>("LoginProvider")
++                        .HasColumnType("text");
++
++                    b.Property<string>("ProviderKey")
++                        .HasColumnType("text");
++
++                    b.Property<string>("ProviderDisplayName")
++                        .HasColumnType("text");
++
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("LoginProvider", "ProviderKey");
++
++                    b.HasIndex("UserId");
++
++                    b.ToTable("AspNetUserLogins", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
++                {
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("RoleId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("UserId", "RoleId");
++
++                    b.HasIndex("RoleId");
++
++                    b.ToTable("AspNetUserRoles", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
++                {
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("LoginProvider")
++                        .HasColumnType("text");
++
++                    b.Property<string>("Name")
++                        .HasColumnType("text");
++
++                    b.Property<string>("Value")
++                        .HasColumnType("text");
++
++                    b.HasKey("UserId", "LoginProvider", "Name");
++
++                    b.ToTable("AspNetUserTokens", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockBalance", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "InventoryLocation")
++                        .WithMany()
++                        .HasForeignKey("InventoryLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("InventoryLocation");
++
++                    b.Navigation("Product");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockMovement", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "InventoryLocation")
++                        .WithMany()
++                        .HasForeignKey("InventoryLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Purchasing.PurchaseInvoiceLine", "PurchaseInvoiceLine")
++                        .WithMany()
++                        .HasForeignKey("PurchaseInvoiceLineId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.HasOne("MarketApp.Domain.Entity.Inventory.StockTransferLine", "StockTransferLine")
++                        .WithMany()
++                        .HasForeignKey("StockTransferLineId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.Navigation("InventoryLocation");
++
++                    b.Navigation("Product");
++
++                    b.Navigation("PurchaseInvoiceLine");
++
++                    b.Navigation("StockTransferLine");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockTransfer", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "DestinationLocation")
++                        .WithMany()
++                        .HasForeignKey("DestinationLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "SourceLocation")
++                        .WithMany()
++                        .HasForeignKey("SourceLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("DestinationLocation");
++
++                    b.Navigation("SourceLocation");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockTransferLine", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Inventory.StockTransfer", "StockTransfer")
++                        .WithMany("Lines")
++                        .HasForeignKey("StockTransferId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Product");
++
++                    b.Navigation("StockTransfer");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.InventoryLocation", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
++                        .WithMany()
++                        .HasForeignKey("BranchId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.Navigation("Branch");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Product", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Category", "Category")
++                        .WithMany("Products")
++                        .HasForeignKey("CategoryId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Category");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.ProductPhoto", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany("Photos")
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Product");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Pricing.BranchProductPrice", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
++                        .WithMany()
++                        .HasForeignKey("BranchId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Branch");
++
++                    b.Navigation("Product");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Pricing.BranchProductPriceHistory", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Pricing.BranchProductPrice", "BranchProductPrice")
++                        .WithMany()
++                        .HasForeignKey("BranchProductPriceId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Inventory.StockTransferLine", "StockTransferLine")
++                        .WithMany()
++                        .HasForeignKey("StockTransferLineId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.Navigation("BranchProductPrice");
++
++                    b.Navigation("StockTransferLine");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoice", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "InventoryLocation")
++                        .WithMany()
++                        .HasForeignKey("InventoryLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.Supplier", "Supplier")
++                        .WithMany()
++                        .HasForeignKey("SupplierId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("InventoryLocation");
++
++                    b.Navigation("Supplier");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoiceLine", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Purchasing.PurchaseInvoice", "PurchaseInvoice")
++                        .WithMany("Lines")
++                        .HasForeignKey("PurchaseInvoiceId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Product");
++
++                    b.Navigation("PurchaseInvoice");
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.ApplicationUserBranch", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
++                        .WithMany()
++                        .HasForeignKey("BranchId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", "User")
++                        .WithMany("BranchAssignments")
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Branch");
++
++                    b.Navigation("User");
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.AuthSession", b =>
++                {
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", "User")
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("User");
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.RefreshToken", b =>
++                {
++                    b.HasOne("MarketApp.Infrastructure.Identity.AuthSession", "AuthSession")
++                        .WithMany("RefreshTokens")
++                        .HasForeignKey("AuthSessionId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("AuthSession");
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
++                {
++                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
++                        .WithMany()
++                        .HasForeignKey("RoleId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
++                {
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
++                {
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
++                {
++                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
++                        .WithMany()
++                        .HasForeignKey("RoleId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
++                {
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockTransfer", b =>
++                {
++                    b.Navigation("Lines");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Category", b =>
++                {
++                    b.Navigation("Products");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Product", b =>
++                {
++                    b.Navigation("Photos");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoice", b =>
++                {
++                    b.Navigation("Lines");
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.ApplicationUser", b =>
++                {
++                    b.Navigation("BranchAssignments");
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.AuthSession", b =>
++                {
++                    b.Navigation("RefreshTokens");
++                });
++#pragma warning restore 612, 618
++        }
++    }
++}
+diff --git a/src/MarketApp.Infrastructure/Migrations/20261004094238_CompleteProductPhotoStorage.cs b/src/MarketApp.Infrastructure/Migrations/20261004094238_CompleteProductPhotoStorage.cs
+new file mode 100644
+index 0000000..1071148
+--- /dev/null
++++ b/src/MarketApp.Infrastructure/Migrations/20261004094238_CompleteProductPhotoStorage.cs
+@@ -0,0 +1,49 @@
++﻿using System;
++using Microsoft.EntityFrameworkCore.Migrations;
++
++#nullable disable
++
++namespace MarketApp.Infrastructure.Migrations
++{
++    /// <inheritdoc />
++    public partial class CompleteProductPhotoStorage : Migration
++    {
++        /// <inheritdoc />
++        protected override void Up(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.AddColumn<DateTime>(
++                name: "DeletedAtUtc",
++                table: "ProductPhotos",
++                type: "timestamp with time zone",
++                nullable: true);
++
++            migrationBuilder.AddColumn<bool>(
++                name: "IsReady",
++                table: "ProductPhotos",
++                type: "boolean",
++                nullable: false,
++                defaultValue: false);
++
++            migrationBuilder.CreateIndex(
++                name: "IX_ProductPhotos_IsReady_DeletedAtUtc_CreatedAtUtc",
++                table: "ProductPhotos",
++                columns: new[] { "IsReady", "DeletedAtUtc", "CreatedAtUtc" });
++        }
++
++        /// <inheritdoc />
++        protected override void Down(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.DropIndex(
++                name: "IX_ProductPhotos_IsReady_DeletedAtUtc_CreatedAtUtc",
++                table: "ProductPhotos");
++
++            migrationBuilder.DropColumn(
++                name: "DeletedAtUtc",
++                table: "ProductPhotos");
++
++            migrationBuilder.DropColumn(
++                name: "IsReady",
++                table: "ProductPhotos");
++        }
++    }
++}
+diff --git a/src/MarketApp.Infrastructure/Migrations/AppDbContextModelSnapshot.cs b/src/MarketApp.Infrastructure/Migrations/AppDbContextModelSnapshot.cs
+index a6522a9..364a64e 100644
+--- a/src/MarketApp.Infrastructure/Migrations/AppDbContextModelSnapshot.cs
++++ b/src/MarketApp.Infrastructure/Migrations/AppDbContextModelSnapshot.cs
+@@ -364,9 +364,15 @@ namespace MarketApp.Infrastructure.Migrations
+                     b.Property<DateTime>("CreatedAtUtc")
+                         .HasColumnType("timestamp with time zone");
+ 
++                    b.Property<DateTime?>("DeletedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
+                     b.Property<long>("FileSizeBytes")
+                         .HasColumnType("bigint");
+ 
++                    b.Property<bool>("IsReady")
++                        .HasColumnType("boolean");
++
+                     b.Property<Guid>("ProductId")
+                         .HasColumnType("uuid");
+ 
+@@ -384,6 +390,8 @@ namespace MarketApp.Infrastructure.Migrations
+                         .IsUnique()
+                         .HasDatabaseName("UX_ProductPhotos_StorageKey");
+ 
++                    b.HasIndex("IsReady", "DeletedAtUtc", "CreatedAtUtc");
++
+                     b.HasIndex("ProductId", "SortOrder", "Id");
+ 
+                     b.ToTable("ProductPhotos", null, t =>
+diff --git a/src/MarketApp.Infrastructure/Persistence/Configurations/ProductPhotoConfiguration.cs b/src/MarketApp.Infrastructure/Persistence/Configurations/ProductPhotoConfiguration.cs
+index a15065c..a50c0a7 100644
+--- a/src/MarketApp.Infrastructure/Persistence/Configurations/ProductPhotoConfiguration.cs
++++ b/src/MarketApp.Infrastructure/Persistence/Configurations/ProductPhotoConfiguration.cs
+@@ -28,6 +28,9 @@ public class ProductPhotoConfiguration : IEntityTypeConfiguration<ProductPhoto>
+         builder.Property(p => p.ContentType).IsRequired().HasMaxLength(32);
+         builder.Property(p => p.ContentHash).IsRequired().HasMaxLength(64);
+         builder.Property(p => p.CreatedAtUtc).HasColumnType("timestamp with time zone");
++        builder.Property(p => p.DeletedAtUtc).HasColumnType("timestamp with time zone");
++
++        builder.HasIndex(p => new { p.IsReady, p.DeletedAtUtc, p.CreatedAtUtc });
+ 
+         builder.HasIndex(p => p.StorageKey)
+             .IsUnique()
+diff --git a/src/MarketApp.Infrastructure/Photos/ProductPhotoProcessor.cs b/src/MarketApp.Infrastructure/Photos/ProductPhotoProcessor.cs
+new file mode 100644
+index 0000000..8957064
+--- /dev/null
++++ b/src/MarketApp.Infrastructure/Photos/ProductPhotoProcessor.cs
+@@ -0,0 +1,91 @@
++using MarketApp.Application.Common;
++using SkiaSharp;
++
++namespace MarketApp.Infrastructure.Photos;
++
++internal static class ProductPhotoProcessor
++{
++    public static async Task<(byte[]? Bytes, string? Error)> NormalizeAsync(
++        Stream input, CancellationToken cancellationToken)
++    {
++        using var source = new MemoryStream();
++        var buffer = new byte[81920];
++        int read;
++        while ((read = await input.ReadAsync(buffer.AsMemory(), cancellationToken)) != 0)
++        {
++            if (source.Length + read > ProductPhotoLimits.MaximumFileBytes)
++                return (null, "The photo must not exceed 5 MB.");
++            await source.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
++        }
++
++        if (source.Length == 0) return (null, "Choose a non-empty image file.");
++
++        cancellationToken.ThrowIfCancellationRequested();
++        using var data = SKData.CreateCopy(source.ToArray());
++        using var codec = SKCodec.Create(data);
++        if (codec is null || codec.EncodedFormat is not
++            (SKEncodedImageFormat.Jpeg or SKEncodedImageFormat.Png or SKEncodedImageFormat.Webp))
++        {
++            return (null, "Choose a valid JPEG, PNG, or WebP image.");
++        }
++        var info = codec.Info;
++        if (info.Width <= 0 || info.Height <= 0 ||
++            (long)info.Width * info.Height > ProductPhotoLimits.MaximumPixels)
++            return (null, "The image must not exceed 20 million pixels.");
++
++        // Decode only the first frame, converting to a bounded sRGB bitmap.
++        using var colorSpace = SKColorSpace.CreateSrgb();
++        using var decoded = new SKBitmap(new SKImageInfo(info.Width, info.Height,
++            SKColorType.Rgba8888, SKAlphaType.Premul, colorSpace));
++        if (codec.GetPixels(decoded.Info, decoded.GetPixels()) != SKCodecResult.Success)
++            return (null, "The file is not a complete valid image.");
++        cancellationToken.ThrowIfCancellationRequested();
++
++        var rotated = codec.EncodedOrigin is SKEncodedOrigin.LeftTop or SKEncodedOrigin.RightTop
++            or SKEncodedOrigin.RightBottom or SKEncodedOrigin.LeftBottom;
++        var width = rotated ? info.Height : info.Width;
++        var height = rotated ? info.Width : info.Height;
++        var scale = Math.Min(1d, (double)ProductPhotoLimits.MaximumDisplaySize / Math.Max(width, height));
++        var outputWidth = Math.Max(1, (int)Math.Round(width * scale));
++        var outputHeight = Math.Max(1, (int)Math.Round(height * scale));
++        using var output = new SKBitmap(new SKImageInfo(outputWidth, outputHeight,
++            SKColorType.Rgba8888, SKAlphaType.Premul, colorSpace));
++        using (var canvas = new SKCanvas(output))
++        {
++            canvas.Clear(SKColors.Transparent);
++            canvas.Scale((float)outputWidth / width, (float)outputHeight / height);
++            ApplyOrientation(canvas, codec.EncodedOrigin, info.Width, info.Height);
++            using var image = SKImage.FromBitmap(decoded);
++            canvas.DrawImage(image, 0, 0, new SKSamplingOptions(SKFilterMode.Linear));
++        }
++        cancellationToken.ThrowIfCancellationRequested();
++        // Encoding a fresh bitmap omits uploaded EXIF/GPS and other source metadata.
++        using var normalized = SKImage.FromBitmap(output);
++        using var encoded = normalized.Encode(SKEncodedImageFormat.Webp, 82);
++        if (encoded is null) throw new InvalidOperationException("WebP encoding failed.");
++        if (encoded.Size > ProductPhotoLimits.MaximumFileBytes)
++            return (null, "The processed image is too large.");
++        return (encoded.ToArray(), null);
++    }
++
++    private static void ApplyOrientation(SKCanvas canvas, SKEncodedOrigin origin, int width, int height)
++    {
++        switch (origin)
++        {
++            case SKEncodedOrigin.TopRight:
++                canvas.Translate(width, 0); canvas.Scale(-1, 1); break;
++            case SKEncodedOrigin.BottomRight:
++                canvas.Translate(width, height); canvas.RotateDegrees(180); break;
++            case SKEncodedOrigin.BottomLeft:
++                canvas.Translate(0, height); canvas.Scale(1, -1); break;
++            case SKEncodedOrigin.LeftTop:
++                canvas.RotateDegrees(90); canvas.Scale(1, -1); break;
++            case SKEncodedOrigin.RightTop:
++                canvas.Translate(height, 0); canvas.RotateDegrees(90); break;
++            case SKEncodedOrigin.RightBottom:
++                canvas.Translate(height, width); canvas.RotateDegrees(90); canvas.Scale(-1, 1); break;
++            case SKEncodedOrigin.LeftBottom:
++                canvas.Translate(0, width); canvas.RotateDegrees(270); break;
++        }
++    }
++}
+diff --git a/src/MarketApp.Infrastructure/Services/ProductPhotoCleanupWorker.cs b/src/MarketApp.Infrastructure/Services/ProductPhotoCleanupWorker.cs
+new file mode 100644
+index 0000000..19ac92f
+--- /dev/null
++++ b/src/MarketApp.Infrastructure/Services/ProductPhotoCleanupWorker.cs
+@@ -0,0 +1,32 @@
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Hosting;
++using Microsoft.Extensions.Logging;
++
++namespace MarketApp.Infrastructure.Services;
++
++public class ProductPhotoCleanupWorker(
++    IServiceScopeFactory scopeFactory,
++    ILogger<ProductPhotoCleanupWorker> logger) : BackgroundService
++{
++    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
++    {
++        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
++        try
++        {
++            while (await timer.WaitForNextTickAsync(stoppingToken))
++            {
++                try
++                {
++                    await using var scope = scopeFactory.CreateAsyncScope();
++                    await scope.ServiceProvider.GetRequiredService<ProductPhotoService>().CleanupAsync(stoppingToken);
++                }
++                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { return; }
++                catch (Exception exception)
++                {
++                    logger.LogWarning(exception, "Product photo cleanup failed; it will retry.");
++                }
++            }
++        }
++        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { /* Shutdown. */ }
++    }
++}
+diff --git a/src/MarketApp.Infrastructure/Services/ProductPhotoService.cs b/src/MarketApp.Infrastructure/Services/ProductPhotoService.cs
+new file mode 100644
+index 0000000..e462fe0
+--- /dev/null
++++ b/src/MarketApp.Infrastructure/Services/ProductPhotoService.cs
+@@ -0,0 +1,162 @@
++using System.Security.Cryptography;
++using MarketApp.Application.Common.Exceptions;
++using MarketApp.Application.DTOs.Products;
++using MarketApp.Application.Interfaces.Services;
++using MarketApp.Domain.Entity.Main;
++using MarketApp.Infrastructure.Persistence;
++using MarketApp.Infrastructure.Photos;
++using Microsoft.EntityFrameworkCore;
++using Microsoft.Extensions.Logging;
++
++namespace MarketApp.Infrastructure.Services;
++
++public class ProductPhotoService : IProductPhotoService
++{
++    private readonly AppDbContext _db;
++    private readonly IProductPhotoStorage _storage;
++    private readonly ILogger<ProductPhotoService> _logger;
++
++    public ProductPhotoService(AppDbContext db, IProductPhotoStorage storage,
++        ILogger<ProductPhotoService> logger)
++    {
++        _db = db;
++        _storage = storage;
++        _logger = logger;
++    }
++
++    public async Task<IReadOnlyList<ProductPhotoDto>?> GetListAsync(Guid productId,
++        CancellationToken cancellationToken = default)
++    {
++        if (!await _db.Products.AnyAsync(p => p.Id == productId, cancellationToken)) return null;
++        var photos = await _db.ProductPhotos.AsNoTracking()
++            .Where(p => p.ProductId == productId && p.IsReady && p.DeletedAtUtc == null)
++            .OrderBy(p => p.SortOrder).ThenBy(p => p.Id).ToListAsync(cancellationToken);
++        return photos.Select(ProductPhotoDto.FromEntity).ToList();
++    }
++
++    public async Task<ProductPhotoContent?> GetContentAsync(Guid productId, Guid photoId,
++        CancellationToken cancellationToken = default)
++    {
++        var photo = await _db.ProductPhotos.AsNoTracking().SingleOrDefaultAsync(
++            p => p.Id == photoId && p.ProductId == productId && p.IsReady && p.DeletedAtUtc == null,
++            cancellationToken);
++        if (photo is null) return null;
++        var bytes = await _storage.ReadAsync(photo.StorageKey, cancellationToken);
++        if (bytes is null) return null;
++        if (bytes.LongLength != photo.FileSizeBytes ||
++            Convert.ToHexString(SHA256.HashData(bytes)) != photo.ContentHash)
++        {
++            throw new InvalidDataException("Stored photo does not match its metadata.");
++        }
++        return new(bytes, photo.ContentType, photo.ContentHash, photo.CreatedAtUtc);
++    }
++
++    public async Task<PhotoUploadResult> UploadAsync(Guid productId, Stream input, int sortOrder,
++        CancellationToken cancellationToken = default)
++    {
++        if (sortOrder < 0)
++            return new(PhotoUploadStatus.InvalidRequest, Error: "Sort order cannot be negative.");
++
++        var product = await _db.Products.AsNoTracking()
++            .SingleOrDefaultAsync(p => p.Id == productId, cancellationToken);
++        if (product is null) return new(PhotoUploadStatus.NotFound, Error: "Product was not found.");
++        if (!product.IsActive)
++            return new(PhotoUploadStatus.Conflict, Error: "Activate the product before uploading photos.");
++
++        var processed = await ProductPhotoProcessor.NormalizeAsync(input, cancellationToken);
++        if (processed.Bytes is null) return new(PhotoUploadStatus.InvalidRequest, Error: processed.Error);
++
++        var photoId = Guid.NewGuid();
++        var photo = new ProductPhoto
++        {
++            Id = photoId, ProductId = productId,
++            StorageKey = $"products/{productId:N}/{photoId:N}.webp",
++            ContentType = "image/webp", FileSizeBytes = processed.Bytes.LongLength,
++            ContentHash = Convert.ToHexString(SHA256.HashData(processed.Bytes)),
++            SortOrder = sortOrder, CreatedAtUtc = DateTime.UtcNow, IsReady = false
++        };
++
++        // Save the pending record first, so a stopped process leaves recoverable work.
++        _db.ProductPhotos.Add(photo);
++        await _db.SaveChangesAsync(cancellationToken);
++        try
++        {
++            using var uploadTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
++            uploadTimeout.CancelAfter(TimeSpan.FromMinutes(2));
++            await _storage.PutAsync(photo.StorageKey, processed.Bytes, photo.ContentType, uploadTimeout.Token);
++
++            // Conditional publication cannot resurrect a photo deleted during upload.
++            var updated = await _db.ProductPhotos
++                .Where(p => p.Id == photo.Id && !p.IsReady && p.DeletedAtUtc == null)
++                .ExecuteUpdateAsync(s => s.SetProperty(p => p.IsReady, true), cancellationToken);
++            if (updated != 1)
++                throw new ConflictException("The photo upload was cancelled or expired. Refresh the photo list.");
++
++            photo.IsReady = true;
++            return new(PhotoUploadStatus.Success, ProductPhotoDto.FromEntity(photo));
++        }
++        catch
++        {
++            try
++            {
++                using var cleanupTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
++                var now = DateTime.UtcNow;
++                // Never remove a published photo if its successful DB response was lost.
++                await _db.ProductPhotos.Where(p => p.Id == photo.Id && !p.IsReady && p.DeletedAtUtc == null)
++                    .ExecuteUpdateAsync(s => s.SetProperty(p => p.DeletedAtUtc, (DateTime?)now), cleanupTimeout.Token);
++            }
++            catch (Exception exception)
++            {
++                _logger.LogWarning(exception, "Could not mark pending photo {PhotoId} for cleanup.", photo.Id);
++            }
++            throw;
++        }
++    }
++
++    public async Task<bool> SetSortOrderAsync(Guid productId, Guid photoId, int sortOrder,
++        CancellationToken cancellationToken = default)
++    {
++        ArgumentOutOfRangeException.ThrowIfNegative(sortOrder);
++        return await _db.ProductPhotos
++            .Where(p => p.Id == photoId && p.ProductId == productId && p.IsReady && p.DeletedAtUtc == null)
++            .ExecuteUpdateAsync(s => s.SetProperty(p => p.SortOrder, sortOrder), cancellationToken) == 1;
++    }
++
++    public async Task DeleteAsync(Guid productId, Guid photoId,
++        CancellationToken cancellationToken = default)
++    {
++        var now = DateTime.UtcNow;
++        await _db.ProductPhotos.Where(p => p.Id == photoId && p.ProductId == productId && p.DeletedAtUtc == null)
++            .ExecuteUpdateAsync(s => s.SetProperty(p => p.DeletedAtUtc, (DateTime?)now), cancellationToken);
++        // Idempotent: an absent or already-deleted photo is also a successful delete.
++    }
++
++    public async Task CleanupAsync(CancellationToken cancellationToken)
++    {
++        var now = DateTime.UtcNow;
++        var expiredUploadCutoff = now.AddHours(-1);
++        await _db.ProductPhotos
++            .Where(p => !p.IsReady && p.DeletedAtUtc == null && p.CreatedAtUtc < expiredUploadCutoff)
++            .ExecuteUpdateAsync(s => s.SetProperty(p => p.DeletedAtUtc, (DateTime?)now), cancellationToken);
++
++        // Grace period for storage requests completing after cancellation.
++        var deletionCutoff = now.AddMinutes(-5);
++        var deletedPhotos = await _db.ProductPhotos.AsNoTracking()
++            .Where(p => p.DeletedAtUtc != null && p.DeletedAtUtc <= deletionCutoff)
++            .OrderBy(p => p.DeletedAtUtc).ThenBy(p => p.Id).Take(25).ToListAsync(cancellationToken);
++        foreach (var photo in deletedPhotos)
++        {
++            try
++            {
++                await _storage.DeleteAsync(photo.StorageKey, cancellationToken);
++                await _db.ProductPhotos.Where(p => p.Id == photo.Id && p.DeletedAtUtc != null)
++                    .ExecuteDeleteAsync(cancellationToken);
++            }
++            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
++            catch (Exception exception)
++            {
++                _logger.LogWarning(exception, "Could not clean product photo {PhotoId}; it will retry.", photo.Id);
++            }
++        }
++    }
++}
+diff --git a/src/MarketApp.Infrastructure/Storage/LocalProductPhotoStorage.cs b/src/MarketApp.Infrastructure/Storage/LocalProductPhotoStorage.cs
+new file mode 100644
+index 0000000..b1dd913
+--- /dev/null
++++ b/src/MarketApp.Infrastructure/Storage/LocalProductPhotoStorage.cs
+@@ -0,0 +1,57 @@
++using MarketApp.Application.Interfaces.Services;
++
++namespace MarketApp.Infrastructure.Storage;
++
++public class LocalProductPhotoStorage : IProductPhotoStorage
++{
++    private readonly string _root;
++
++    public LocalProductPhotoStorage(PhotoStorageOptions options)
++    {
++        _root = string.IsNullOrWhiteSpace(options.LocalRoot)
++            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
++                "MarketApp", "ProductPhotos")
++            : Path.GetFullPath(options.LocalRoot);
++        Directory.CreateDirectory(_root);
++    }
++
++    private string GetPath(string storageKey)
++    {
++        ProductPhotoStorageIO.ValidateKey(storageKey);
++        return Path.Combine(_root, storageKey.Replace('/', Path.DirectorySeparatorChar));
++    }
++
++    public async Task PutAsync(string storageKey, byte[] bytes, string contentType,
++        CancellationToken cancellationToken = default)
++    {
++        var path = GetPath(storageKey);
++        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
++        await using var file = new FileStream(path, FileMode.CreateNew, FileAccess.Write,
++            FileShare.None, bufferSize: 81920, useAsync: true);
++        await file.WriteAsync(bytes, cancellationToken);
++    }
++
++    public async Task<byte[]?> ReadAsync(string storageKey,
++        CancellationToken cancellationToken = default)
++    {
++        try
++        {
++            await using var file = new FileStream(GetPath(storageKey), FileMode.Open,
++                FileAccess.Read, FileShare.Read, bufferSize: 81920, useAsync: true);
++            return await ProductPhotoStorageIO.ReadBoundedAsync(file, cancellationToken);
++        }
++        catch (Exception exception) when (
++            exception is FileNotFoundException or DirectoryNotFoundException)
++        {
++            return null;
++        }
++    }
++
++    public Task DeleteAsync(string storageKey, CancellationToken cancellationToken = default)
++    {
++        cancellationToken.ThrowIfCancellationRequested();
++        try { File.Delete(GetPath(storageKey)); }
++        catch (DirectoryNotFoundException) { /* Already absent. */ }
++        return Task.CompletedTask;
++    }
++}
+diff --git a/src/MarketApp.Infrastructure/Storage/PhotoStorageOptions.cs b/src/MarketApp.Infrastructure/Storage/PhotoStorageOptions.cs
+new file mode 100644
+index 0000000..e560d78
+--- /dev/null
++++ b/src/MarketApp.Infrastructure/Storage/PhotoStorageOptions.cs
+@@ -0,0 +1,12 @@
++namespace MarketApp.Infrastructure.Storage;
++
++public class PhotoStorageOptions
++{
++    public string Provider { get; set; } = "Local";
++    public string LocalRoot { get; set; } = string.Empty;
++    public string BucketName { get; set; } = string.Empty;
++    public string Region { get; set; } = "us-east-1";
++    // Optional development credentials. Use User Secrets, not committed config.
++    public string AccessKeyId { get; set; } = string.Empty;
++    public string SecretAccessKey { get; set; } = string.Empty;
++}
+diff --git a/src/MarketApp.Infrastructure/Storage/ProductPhotoStorageIO.cs b/src/MarketApp.Infrastructure/Storage/ProductPhotoStorageIO.cs
+new file mode 100644
+index 0000000..20445df
+--- /dev/null
++++ b/src/MarketApp.Infrastructure/Storage/ProductPhotoStorageIO.cs
+@@ -0,0 +1,32 @@
++using System.Text.RegularExpressions;
++using MarketApp.Application.Common;
++
++namespace MarketApp.Infrastructure.Storage;
++
++internal static class ProductPhotoStorageIO
++{
++    public static void ValidateKey(string storageKey)
++    {
++        if (storageKey is null || !Regex.IsMatch(storageKey,
++                @"\Aproducts/[0-9a-f]{32}/[0-9a-f]{32}\.webp\z"))
++        {
++            throw new InvalidOperationException("Invalid product photo storage key.");
++        }
++    }
++
++    public static async Task<byte[]> ReadBoundedAsync(Stream input, CancellationToken ct)
++    {
++        using var output = new MemoryStream();
++        var buffer = new byte[81920];
++        int read;
++        while ((read = await input.ReadAsync(buffer.AsMemory(), ct)) != 0)
++        {
++            if (output.Length + read > ProductPhotoLimits.MaximumFileBytes)
++            {
++                throw new InvalidDataException("Stored photo exceeds the supported size.");
++            }
++            await output.WriteAsync(buffer.AsMemory(0, read), ct);
++        }
++        return output.ToArray();
++    }
++}
+diff --git a/src/MarketApp.Infrastructure/Storage/S3ProductPhotoStorage.cs b/src/MarketApp.Infrastructure/Storage/S3ProductPhotoStorage.cs
+new file mode 100644
+index 0000000..a62abf4
+--- /dev/null
++++ b/src/MarketApp.Infrastructure/Storage/S3ProductPhotoStorage.cs
+@@ -0,0 +1,59 @@
++using System.Net;
++using Amazon.S3;
++using Amazon.S3.Model;
++using MarketApp.Application.Interfaces.Services;
++
++namespace MarketApp.Infrastructure.Storage;
++
++public class S3ProductPhotoStorage : IProductPhotoStorage
++{
++    private readonly IAmazonS3 _client;
++    private readonly string _bucketName;
++
++    public S3ProductPhotoStorage(IAmazonS3 client, PhotoStorageOptions options)
++    {
++        _client = client;
++        _bucketName = options.BucketName;
++    }
++
++    public async Task PutAsync(string storageKey, byte[] bytes, string contentType,
++        CancellationToken cancellationToken = default)
++    {
++        ProductPhotoStorageIO.ValidateKey(storageKey);
++        using var input = new MemoryStream(bytes, writable: false);
++        await _client.PutObjectAsync(new PutObjectRequest
++        {
++            BucketName = _bucketName, Key = storageKey, InputStream = input,
++            ContentType = contentType, AutoCloseStream = false
++        }, cancellationToken);
++    }
++
++    public async Task<byte[]?> ReadAsync(string storageKey,
++        CancellationToken cancellationToken = default)
++    {
++        ProductPhotoStorageIO.ValidateKey(storageKey);
++        try
++        {
++            using var response = await _client.GetObjectAsync(new GetObjectRequest
++            {
++                BucketName = _bucketName, Key = storageKey
++            }, cancellationToken);
++            return await ProductPhotoStorageIO.ReadBoundedAsync(
++                response.ResponseStream, cancellationToken);
++        }
++        catch (AmazonS3Exception exception) when (exception.StatusCode == HttpStatusCode.NotFound)
++        {
++            return null;
++        }
++    }
++
++    public async Task DeleteAsync(string storageKey,
++        CancellationToken cancellationToken = default)
++    {
++        ProductPhotoStorageIO.ValidateKey(storageKey);
++        await _client.DeleteObjectAsync(new DeleteObjectRequest
++        {
++            BucketName = _bucketName, Key = storageKey
++        }, cancellationToken);
++    }
++}
+diff --git a/tests/MarketApp.Photos.Tests/MarketApp.Photos.Tests.csproj b/tests/MarketApp.Photos.Tests/MarketApp.Photos.Tests.csproj
+new file mode 100644
+index 0000000..9ac53fe
+--- /dev/null
++++ b/tests/MarketApp.Photos.Tests/MarketApp.Photos.Tests.csproj
+@@ -0,0 +1,27 @@
++﻿<Project Sdk="Microsoft.NET.Sdk">
++
++  <PropertyGroup>
++    <TargetFramework>net10.0</TargetFramework>
++    <ImplicitUsings>enable</ImplicitUsings>
++    <Nullable>enable</Nullable>
++    <IsPackable>false</IsPackable>
++  </PropertyGroup>
++
++  <ItemGroup>
++    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
++    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
++    <PackageReference Include="coverlet.collector" Version="6.0.4" />
++    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
++    <PackageReference Include="xunit" Version="2.9.3" />
++    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
++  </ItemGroup>
++
++  <ItemGroup>
++    <Using Include="Xunit" />
++  </ItemGroup>
++
++  <ItemGroup>
++    <ProjectReference Include="..\..\src\MarketApp.Api\MarketApp.Api.csproj" />
++  </ItemGroup>
++
++</Project>
+diff --git a/tests/MarketApp.Photos.Tests/PhotoWorkflowTests.cs b/tests/MarketApp.Photos.Tests/PhotoWorkflowTests.cs
+new file mode 100644
+index 0000000..9af0d33
+--- /dev/null
++++ b/tests/MarketApp.Photos.Tests/PhotoWorkflowTests.cs
+@@ -0,0 +1,335 @@
++using System.Net;
++using System.Net.Http.Json;
++using System.Security.Claims;
++using System.Security.Cryptography;
++using System.Text.Encodings.Web;
++using MarketApp.Api.Controllers;
++using MarketApp.Api.ExceptionHandling;
++using MarketApp.Application.DTOs.Products;
++using MarketApp.Application.Interfaces.Services;
++using MarketApp.Domain.Entity.Main;
++using MarketApp.Infrastructure.Persistence;
++using MarketApp.Infrastructure.Services;
++using MarketApp.Infrastructure.Storage;
++using Microsoft.AspNetCore.Authentication;
++using Microsoft.AspNetCore.Builder;
++using Microsoft.AspNetCore.Hosting;
++using Microsoft.AspNetCore.TestHost;
++using Microsoft.Data.Sqlite;
++using Microsoft.EntityFrameworkCore;
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Logging;
++using Microsoft.Extensions.Options;
++using Microsoft.Extensions.Hosting;
++using SkiaSharp;
++
++namespace MarketApp.Photos.Tests;
++
++// Real controller, service, image processor and local file storage. SQLite is a
++// test-only relational substitute; production PostgreSQL and JWT need smoke tests.
++public sealed class PhotoWorkflowTests : IDisposable
++{
++    private readonly SqliteConnection _connection = new("Data Source=:memory:");
++    private readonly string _root = Path.Combine(Path.GetTempPath(), "market-photo-tests-" + Guid.NewGuid());
++    private readonly IHost _host;
++    private readonly TestServer _server;
++    private readonly HttpClient _client;
++    private readonly FaultStorage _storage;
++    private readonly Guid _productId = Guid.NewGuid();
++    private string Route => $"/api/products/{_productId}/photos";
++
++    public PhotoWorkflowTests()
++    {
++        _connection.Open();
++        _storage = new(new LocalProductPhotoStorage(new() { LocalRoot = _root }));
++        _host = new HostBuilder().ConfigureWebHost(web => web.UseTestServer().ConfigureServices(services =>
++        {
++            services.AddLogging();
++            services.AddControllers().AddApplicationPart(typeof(ProductPhotosController).Assembly);
++            services.AddProblemDetails();
++            services.AddExceptionHandler<GlobalExceptionHandler>();
++            services.AddAuthentication("Test").AddScheme<AuthenticationSchemeOptions, TestAuthentication>("Test", _ => { });
++            services.AddAuthorization(options => options.AddPolicy("AuthenticatedUser", p => p.RequireAuthenticatedUser()));
++            services.AddScoped<AppDbContext>(_ => NewDb());
++            services.AddSingleton<IProductPhotoStorage>(_storage);
++            services.AddScoped<ProductPhotoService>();
++            services.AddScoped<IProductPhotoService>(p => p.GetRequiredService<ProductPhotoService>());
++        }).Configure(app =>
++        {
++            app.UseExceptionHandler();
++            app.UseRouting();
++            app.UseAuthentication();
++            app.UseAuthorization();
++            app.UseEndpoints(endpoints => endpoints.MapControllers());
++        })).Start();
++        _server = _host.GetTestServer();
++        using var db = NewDb();
++        db.Database.EnsureCreated();
++        var category = new Category { Name = "Photos" };
++        db.Products.Add(new() { Id = _productId, Category = category, Name = "Test", Sku = "PHOTO-1" });
++        db.SaveChanges();
++        _client = _server.CreateClient();
++        _client.DefaultRequestHeaders.Add("X-Test-Role", "Stakeholder");
++    }
++
++    private PhotoDb NewDb() => new(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
++    private async Task<HttpResponseMessage> Upload(byte[] bytes, int order = 0)
++    {
++        using var body = new MultipartFormDataContent();
++        body.Add(new ByteArrayContent(bytes), "File", "untrusted-name.jpg");
++        body.Add(new StringContent(order.ToString()), "SortOrder");
++        return await _client.PostAsync(Route, body);
++    }
++    private async Task<ProductPhotoDto> UploadOk(byte[]? bytes = null, int order = 0)
++    {
++        using var response = await Upload(bytes ?? ImageBytes(), order);
++        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
++        return (await response.Content.ReadFromJsonAsync<ProductPhotoDto>())!;
++    }
++    private async Task<List<ProductPhotoDto>> List() => (await _client.GetFromJsonAsync<List<ProductPhotoDto>>(Route))!;
++    private async Task Cleanup()
++    {
++        using var scope = _server.Services.CreateScope();
++        await scope.ServiceProvider.GetRequiredService<ProductPhotoService>().CleanupAsync(default);
++    }
++    private async Task AgeDeletion(Guid id)
++    {
++        using var db = NewDb();
++        await db.ProductPhotos.Where(p => p.Id == id).ExecuteUpdateAsync(s =>
++            s.SetProperty(p => p.DeletedAtUtc, DateTime.UtcNow.AddMinutes(-6)));
++    }
++    private static byte[] ImageBytes(SKEncodedImageFormat format = SKEncodedImageFormat.Png, int width = 40, int height = 20)
++    {
++        using var bitmap = new SKBitmap(width, height);
++        bitmap.Erase(SKColors.Red);
++        using var image = SKImage.FromBitmap(bitmap);
++        using var data = image.Encode(format, 90);
++        return data.ToArray();
++    }
++
++    [Theory]
++    [InlineData(SKEncodedImageFormat.Png)]
++    [InlineData(SKEncodedImageFormat.Jpeg)]
++    [InlineData(SKEncodedImageFormat.Webp)]
++    public async Task Upload_normalizes_downloads_and_supports_conditional_get(SKEncodedImageFormat format)
++    {
++        var photo = await UploadOk(ImageBytes(format, 2000, 1000));
++        Assert.Equal("image/webp", photo.ContentType);
++        Assert.Equal($"products/{_productId:N}/{photo.Id:N}.webp", photo.StorageKey);
++        Assert.Single(await List());
++        using var response = await _client.GetAsync(photo.DownloadPath);
++        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
++        var bytes = await response.Content.ReadAsByteArrayAsync();
++        Assert.Equal(photo.ContentHash, Convert.ToHexString(SHA256.HashData(bytes)));
++        Assert.Equal(photo.FileSizeBytes, bytes.LongLength);
++        using var image = SKBitmap.Decode(bytes);
++        Assert.Equal(1600, image.Width);
++        Assert.Equal(800, image.Height);
++        Assert.True(response.Headers.CacheControl!.Private);
++        using var request = new HttpRequestMessage(HttpMethod.Get, photo.DownloadPath);
++        request.Headers.IfNoneMatch.Add(response.Headers.ETag!);
++        Assert.Equal(HttpStatusCode.NotModified, (await _client.SendAsync(request)).StatusCode);
++        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync(photo.DownloadPath.Replace(_productId.ToString(), Guid.NewGuid().ToString()))).StatusCode);
++    }
++
++    [Theory]
++    [InlineData("Seller")]
++    [InlineData("BranchManager")]
++    public async Task Staff_can_read_but_cannot_change_photos(string role)
++    {
++        var photo = await UploadOk();
++        _client.DefaultRequestHeaders.Remove("X-Test-Role");
++        _client.DefaultRequestHeaders.Add("X-Test-Role", role);
++        Assert.Equal(HttpStatusCode.OK, (await _client.GetAsync(Route)).StatusCode);
++        Assert.Equal(HttpStatusCode.OK, (await _client.GetAsync(photo.DownloadPath)).StatusCode);
++        Assert.Equal(HttpStatusCode.Forbidden, (await Upload(ImageBytes())).StatusCode);
++        Assert.Equal(HttpStatusCode.Forbidden, (await _client.PutAsJsonAsync($"{Route}/{photo.Id}/order", new { sortOrder = 2 })).StatusCode);
++        Assert.Equal(HttpStatusCode.Forbidden, (await _client.DeleteAsync($"{Route}/{photo.Id}")).StatusCode);
++        _client.DefaultRequestHeaders.Remove("X-Test-Role");
++        Assert.Equal(HttpStatusCode.Unauthorized, (await _client.GetAsync(photo.DownloadPath)).StatusCode);
++    }
++
++    [Fact]
++    public async Task Rejects_invalid_empty_oversized_and_negative_order_without_storage_writes()
++    {
++        foreach (var bytes in new[] { Array.Empty<byte>(), "not an image"u8.ToArray(), new byte[5 * 1024 * 1024 + 1] })
++            Assert.Equal(HttpStatusCode.BadRequest, (await Upload(bytes)).StatusCode);
++        Assert.Equal(HttpStatusCode.BadRequest, (await Upload(ImageBytes(), -1)).StatusCode);
++        Assert.Empty(await List());
++        Assert.Equal(0, _storage.Writes);
++    }
++
++    [Fact]
++    public async Task Inactive_and_missing_products_reject_uploads()
++    {
++        using var db = NewDb();
++        await db.Products.ExecuteUpdateAsync(s => s.SetProperty(p => p.IsActive, false));
++        Assert.Equal(HttpStatusCode.Conflict, (await Upload(ImageBytes())).StatusCode);
++        await db.Products.ExecuteDeleteAsync();
++        Assert.Equal(HttpStatusCode.NotFound, (await Upload(ImageBytes())).StatusCode);
++        Assert.Equal(0, _storage.Writes);
++    }
++
++    [Fact]
++    public async Task Ordering_and_deletion_hide_photo_immediately_and_cleanup_retries()
++    {
++        var first = await UploadOk(order: 1);
++        var second = await UploadOk(order: 2);
++        Assert.Equal(HttpStatusCode.BadRequest, (await _client.PutAsJsonAsync($"{Route}/{second.Id}/order", new { })).StatusCode);
++        Assert.Equal(HttpStatusCode.NoContent, (await _client.PutAsJsonAsync($"{Route}/{second.Id}/order", new { sortOrder = 0 })).StatusCode);
++        Assert.Equal(second.Id, (await List())[0].Id);
++        Assert.Equal(HttpStatusCode.NoContent, (await _client.DeleteAsync($"{Route}/{second.Id}")).StatusCode);
++        Assert.Equal(HttpStatusCode.NoContent, (await _client.DeleteAsync($"{Route}/{second.Id}")).StatusCode);
++        Assert.Equal(first.Id, Assert.Single(await List()).Id);
++        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync(second.DownloadPath)).StatusCode);
++        await AgeDeletion(second.Id);
++        _storage.FailDelete = true;
++        await Cleanup();
++        using var db = NewDb();
++        Assert.True(await db.ProductPhotos.AnyAsync(p => p.Id == second.Id));
++        _storage.FailDelete = false;
++        await Cleanup();
++        Assert.False(await db.ProductPhotos.AnyAsync(p => p.Id == second.Id));
++        Assert.Null(await _storage.ReadAsync(second.StorageKey));
++        Assert.NotNull(await _storage.ReadAsync(first.StorageKey));
++    }
++
++    [Fact]
++    public async Task Partial_storage_failure_is_hidden_and_recoverable()
++    {
++        _storage.FailPut = true;
++        Assert.Equal(HttpStatusCode.InternalServerError, (await Upload(ImageBytes())).StatusCode);
++        Assert.Empty(await List());
++        using var db = NewDb();
++        var pending = await db.ProductPhotos.SingleAsync();
++        Assert.False(pending.IsReady);
++        Assert.NotNull(pending.DeletedAtUtc);
++        await AgeDeletion(pending.Id);
++        await Cleanup();
++        Assert.Empty(await db.ProductPhotos.ToListAsync());
++        Assert.Null(await _storage.ReadAsync(pending.StorageKey));
++    }
++
++    [Fact]
++    public async Task Delete_during_upload_cannot_publish_the_photo()
++    {
++        _storage.AfterPut = async () =>
++        {
++            using var db = NewDb();
++            await db.ProductPhotos.ExecuteUpdateAsync(s => s.SetProperty(p => p.DeletedAtUtc, DateTime.UtcNow));
++        };
++        Assert.Equal(HttpStatusCode.Conflict, (await Upload(ImageBytes())).StatusCode);
++        Assert.Empty(await List());
++    }
++
++    [Fact]
++    public async Task Storage_rejects_traversal_overwrite_and_corrupted_content()
++    {
++        var photo = await UploadOk();
++        await Assert.ThrowsAsync<InvalidOperationException>(() => _storage.ReadAsync("../secret"));
++        await Assert.ThrowsAsync<IOException>(() => _storage.PutAsync(photo.StorageKey, [1], "image/webp"));
++        File.WriteAllBytes(Path.Combine(_root, photo.StorageKey), [1, 2]);
++        Assert.Equal(HttpStatusCode.InternalServerError, (await _client.GetAsync(photo.DownloadPath)).StatusCode);
++    }
++
++    [Theory]
++    [InlineData(6)]
++    [InlineData(8)]
++    public async Task Jpeg_orientation_is_applied_before_metadata_is_removed(int orientation)
++    {
++        using var bitmap = new SKBitmap(80, 40);
++        using (var canvas = new SKCanvas(bitmap))
++        {
++            canvas.Clear(SKColors.Blue);
++            using var paint = new SKPaint { Color = SKColors.Red };
++            canvas.DrawRect(0, 0, 40, 40, paint);
++        }
++        using var image = SKImage.FromBitmap(bitmap);
++        using var encoded = image.Encode(SKEncodedImageFormat.Jpeg, 100);
++        var jpeg = encoded.ToArray();
++        // APP1 EXIF with one little-endian TIFF orientation entry.
++        byte[] exif = [0xFF, 0xE1, 0, 34, 69, 120, 105, 102, 0, 0,
++            73, 73, 42, 0, 8, 0, 0, 0, 1, 0, 0x12, 1, 3, 0,
++            1, 0, 0, 0, (byte)orientation, 0, 0, 0, 0, 0, 0, 0];
++        byte[] oriented = [.. jpeg[..2], .. exif, .. jpeg[2..]];
++        var photo = await UploadOk(oriented);
++        var bytes = await _client.GetByteArrayAsync(photo.DownloadPath);
++        using var output = SKBitmap.Decode(bytes);
++        Assert.Equal(40, output.Width);
++        Assert.Equal(80, output.Height);
++        var top = output.GetPixel(20, 10);
++        Assert.True(orientation == 6 ? top.Red > top.Blue : top.Blue > top.Red);
++        using var data = SKData.CreateCopy(bytes);
++        using var codec = SKCodec.Create(data);
++        Assert.Equal(SKEncodedOrigin.TopLeft, codec.EncodedOrigin);
++    }
++
++    [Fact]
++    public async Task Expired_pending_upload_is_cleaned_but_fresh_pending_is_kept()
++    {
++        var expired = await UploadOk();
++        var fresh = await UploadOk();
++        using var db = NewDb();
++        await db.ProductPhotos.ExecuteUpdateAsync(s => s.SetProperty(p => p.IsReady, false));
++        await db.ProductPhotos.Where(p => p.Id == expired.Id).ExecuteUpdateAsync(s =>
++            s.SetProperty(p => p.CreatedAtUtc, DateTime.UtcNow.AddHours(-2)));
++        await Cleanup();
++        Assert.NotNull((await db.ProductPhotos.AsNoTracking().SingleAsync(p => p.Id == expired.Id)).DeletedAtUtc);
++        Assert.Null((await db.ProductPhotos.AsNoTracking().SingleAsync(p => p.Id == fresh.Id)).DeletedAtUtc);
++        Assert.Empty(await List());
++        await AgeDeletion(expired.Id);
++        await Cleanup();
++        Assert.Null(await _storage.ReadAsync(expired.StorageKey));
++        Assert.NotNull(await _storage.ReadAsync(fresh.StorageKey));
++    }
++
++    public void Dispose()
++    {
++        _client.Dispose(); _host.Dispose(); _connection.Dispose();
++        if (Directory.Exists(_root)) Directory.Delete(_root, true);
++    }
++
++    private sealed class PhotoDb(DbContextOptions<AppDbContext> options) : AppDbContext(options)
++    {
++        protected override void OnModelCreating(ModelBuilder modelBuilder)
++        {
++            base.OnModelCreating(modelBuilder);
++            var keep = new[] { typeof(Product), typeof(Category), typeof(ProductPhoto) };
++            foreach (var entity in modelBuilder.Model.GetEntityTypes().ToArray())
++                if (!keep.Contains(entity.ClrType)) modelBuilder.Ignore(entity.ClrType);
++            foreach (var entity in modelBuilder.Model.GetEntityTypes())
++                foreach (var constraint in entity.GetCheckConstraints().ToArray())
++                    entity.RemoveCheckConstraint(constraint.Name!);
++        }
++    }
++
++    private sealed class FaultStorage(IProductPhotoStorage inner) : IProductPhotoStorage
++    {
++        public int Writes { get; private set; }
++        public bool FailPut { get; set; }
++        public bool FailDelete { get; set; }
++        public Func<Task>? AfterPut { get; set; }
++        public async Task PutAsync(string key, byte[] bytes, string contentType, CancellationToken ct = default)
++        {
++            Writes++;
++            await inner.PutAsync(key, bytes, contentType, ct);
++            if (FailPut) throw new IOException("Simulated lost storage response");
++            if (AfterPut is not null) await AfterPut();
++        }
++        public Task<byte[]?> ReadAsync(string key, CancellationToken ct = default) => inner.ReadAsync(key, ct);
++        public Task DeleteAsync(string key, CancellationToken ct = default) => FailDelete
++            ? Task.FromException(new IOException("Simulated delete failure")) : inner.DeleteAsync(key, ct);
++    }
++
++    private sealed class TestAuthentication(IOptionsMonitor<AuthenticationSchemeOptions> options,
++        ILoggerFactory logger, UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
++    {
++        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
++        {
++            var role = Request.Headers["X-Test-Role"].ToString();
++            if (string.IsNullOrEmpty(role)) return Task.FromResult(AuthenticateResult.NoResult());
++            var identity = new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, "test"), new Claim(ClaimTypes.Role, role) }, Scheme.Name);
++            return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name)));
++        }
++    }
++}

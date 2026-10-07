@@ -6,4 +6,7 @@ public record ProductDto(
     string Sku,
     bool IsActive,
     Guid CategoryId,
-    string CategoryName);
+    string CategoryName)
+{
+    public IReadOnlyList<ProductPhotoDto> Photos { get; init; } = [];
+}
