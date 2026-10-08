@@ -1,4 +1,4 @@
-﻿using MarketApp.Domain.Entity.Inventory;
+using MarketApp.Domain.Entity.Inventory;
 using MarketApp.Domain.Entity.Main;
 using MarketApp.Domain.Entity.Pricing;
 using MarketApp.Domain.Entity.Purchasing;
@@ -15,6 +15,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
         : base(options)
     {
     }
+    public DbSet<MarketApp.Domain.Entity.Sales.SalesInvoice> SalesInvoices => Set<MarketApp.Domain.Entity.Sales.SalesInvoice>();
+    public DbSet<MarketApp.Domain.Entity.Sales.SalesInvoiceLine> SalesInvoiceLines => Set<MarketApp.Domain.Entity.Sales.SalesInvoiceLine>();
     // Add DbSet properties for your entities
     public DbSet<Category> Categories => Set<Category>();
 

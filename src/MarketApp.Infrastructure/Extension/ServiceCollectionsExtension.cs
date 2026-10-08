@@ -1,4 +1,4 @@
-﻿using MarketApp.Application.Interfaces.Services;
+using MarketApp.Application.Interfaces.Services;
 using MarketApp.Application.Persistence.Contracts;
 using MarketApp.Infrastructure.Email;
 using MarketApp.Infrastructure.Identity;
@@ -114,6 +114,7 @@ public static class ServiceCollectionsExtension
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IBranchAccessService, BranchAccessService>();
 
+        services.AddScoped<ISalesQueries, MarketApp.Infrastructure.Services.SalesQueries>();
         services.AddProductPhotos(configuration);
 
         return services;

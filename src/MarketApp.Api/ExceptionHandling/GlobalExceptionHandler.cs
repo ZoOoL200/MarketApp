@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using MarketApp.Application.Common.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -25,7 +25,7 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
 
         var isConflict = exception is ConflictException;
 
-        var statusCode = isConflict
+        var statusCode = exception is RequestException request ? request.StatusCode : isConflict
             ? StatusCodes.Status409Conflict
             : StatusCodes.Status500InternalServerError;
 
@@ -48,11 +48,11 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
         {
             Status = statusCode,
 
-            Title = isConflict
+            Title = exception is RequestException ? "Request could not be completed." : isConflict
                 ? "Data conflict."
                 : "An unexpected error occurred.",
 
-            Detail = isConflict
+            Detail = exception is RequestException ? exception.Message : isConflict
                 ? exception.Message
                 : "The request could not be completed. " +
                   "Contact support if the problem continues.",

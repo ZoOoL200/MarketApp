@@ -1,2 +1,9 @@
 <Solution>
+  <Project Path="src/MarketApp.Api/MarketApp.Api.csproj" />
+  <Project Path="src/MarketApp.Application/MarketApp.Application.csproj" />
+  <Project Path="src/MarketApp.Domain/MarketApp.Domain.csproj" />
+  <Project Path="src/MarketApp.Infrastructure/MarketApp.Infrastructure.csproj" />
+  <Project Path="tests/MarketApp.Api.Tests/MarketApp.Api.Tests.csproj" />
+  <Project Path="tests/MarketApp.Application.Tests/MarketApp.Application.Tests.csproj" />
+  <Project Path="tests/MarketApp.Photos.Tests/MarketApp.Photos.Tests.csproj" />
 </Solution>

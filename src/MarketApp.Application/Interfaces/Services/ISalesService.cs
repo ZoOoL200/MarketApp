@@ -1,0 +1,6 @@
+using MarketApp.Application.DTOs.Sales;
+namespace MarketApp.Application.Interfaces.Services;
+public interface ISalesService
+{
+    Task<PostedSaleDto> SellAsync(Guid branchId, Guid actorId, CreateSaleDto request, CancellationToken ct = default);
+}

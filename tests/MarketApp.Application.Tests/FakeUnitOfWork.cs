@@ -36,6 +36,9 @@ internal sealed class FakeUnitOfWork : IUnitOfWork
     public IGeneralRepository<BranchProductPrice> BranchProductPrices => Repo<BranchProductPrice>();
     public IGeneralRepository<BranchProductPriceHistory> BranchProductPriceHistories => Repo<BranchProductPriceHistory>();
 
+    public IGeneralRepository<MarketApp.Domain.Entity.Sales.SalesInvoice> SalesInvoices => Repo<MarketApp.Domain.Entity.Sales.SalesInvoice>();
+    public Task<IUnitOfWorkTransaction> BeginSerializableAsync(CancellationToken ct = default)
+        => throw new NotSupportedException("Use integration tests for commerce transactions.");
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         SaveCount++;

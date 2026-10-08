@@ -1,4 +1,4 @@
-﻿using MarketApp.Application.Interfaces.Services;
+using MarketApp.Application.Interfaces.Services;
 using MarketApp.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,6 +19,7 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IStockTransferService, StockTransferService>();
         services.AddScoped<IBranchProductPriceService,BranchProductPriceService>();
 
+        services.AddScoped<ISalesService, SalesService>();
         return services;
     }
 }

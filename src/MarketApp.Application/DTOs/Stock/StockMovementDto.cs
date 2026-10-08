@@ -1,4 +1,4 @@
-﻿namespace MarketApp.Application.DTOs.Stock;
+namespace MarketApp.Application.DTOs.Stock;
 
 public record StockMovementDto(
     Guid Id,
@@ -13,4 +13,7 @@ public record StockMovementDto(
     Guid? PurchaseInvoiceId,
     Guid? PurchaseInvoiceLineId,
     Guid? StockTransferId,
-    Guid? StockTransferLineId);
+    Guid? StockTransferLineId)
+{
+    public Guid? SalesInvoiceLineId { get; init; }
+}

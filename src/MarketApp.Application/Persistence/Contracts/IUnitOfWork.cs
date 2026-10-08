@@ -1,4 +1,4 @@
-﻿using MarketApp.Domain.Entity.Inventory;
+using MarketApp.Domain.Entity.Inventory;
 using MarketApp.Domain.Entity.Main;
 using MarketApp.Domain.Entity.Pricing;
 using MarketApp.Domain.Entity.Purchasing;
@@ -19,6 +19,8 @@ public interface IUnitOfWork
     IGeneralRepository<StockTransfer> StockTransfers { get; }
     IGeneralRepository<BranchProductPrice> BranchProductPrices { get; }
     IGeneralRepository<BranchProductPriceHistory>BranchProductPriceHistories { get; }
+    IGeneralRepository<MarketApp.Domain.Entity.Sales.SalesInvoice> SalesInvoices { get; }
+    Task<IUnitOfWorkTransaction> BeginSerializableAsync(CancellationToken ct = default);
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);
 }

@@ -1,0 +1,70 @@
+@baseUrl = https://localhost:7126
+@sellerToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjBmYjc0NzI1LTQ0Y2ItNDM5MC1hMjhjLTczODdhMzlkZjdjNSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJzZWxsZXIuYnJhbmNoMSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6InNlbGxlcjFAZ21haWwuY29tIiwiQXNwTmV0LklkZW50aXR5LlNlY3VyaXR5U3RhbXAiOiJRRldSN1MyUkRaTDcyRlNWRkhMSUhTUVZRTFBWN1RCRCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlNlbGxlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiNDUxZGI4YTUtNTZkNS00MjJhLTk1ZDQtMWI3YjVhZGRhYjkzIiwic3ViIjoiMGZiNzQ3MjUtNDRjYi00MzkwLWEyOGMtNzM4N2EzOWRmN2M1IiwianRpIjoiM2UzYjgxOWZiODFjNDAyNzkwOWM3ZDIwMjAwMTEwMTUiLCJpYXQiOjE3OTE0NDQzMzEsIm5iZiI6MTc5MTQ0NDMzMSwiZXhwIjoxNzkxNDQ2MTMxLCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ.jZerXgm7RztuRAkMZvuLo4ksKC9f7B41iFA-fq1FX-k
+@managerToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImUyNmI3YTE3LWZlMTgtNGRlMi1hYzk1LTZlNGJlMzUxMTkzZSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhaG1lZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFobWVkcmFiaWVzYWlkQGdtYWlsLmNvbSIsIkFzcE5ldC5JZGVudGl0eS5TZWN1cml0eVN0YW1wIjoiUlRNT1hYTkRRV1BJR0c3N0FDWjVVUEpEUUg0U1hIS0EiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJTdGFrZWhvbGRlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiYzdhYTRiOGYtYmY4Ny00NjA2LTg3YmUtNDQ0MjU0N2QyMjBmIiwic3ViIjoiZTI2YjdhMTctZmUxOC00ZGUyLWFjOTUtNmU0YmUzNTExOTNlIiwianRpIjoiYzU0MWE3MWJhNWEzNGQ2OTg5ZDdjM2RlOWIxZGIzMWUiLCJpYXQiOjE3OTE0NDMwNzEsIm5iZiI6MTc5MTQ0MzA3MSwiZXhwIjoxNzkxNDQ0ODcxLCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ.bRAwYMFICkMQKHdjp07IKEMOtAlNDwlB5Azh7ubWfkA
+@username = seller.branch1
+@password = abababab
+@branchId = ba7c4374-a68b-4c60-ab06-55ac62505670
+@locationId = 204f06e3-e969-41fd-9c7c-1ba6eff901a6
+@productId = ca6f2e9a-24b5-4194-bb2a-66ce34b6a469
+@priceRevision = 3
+@clientSaleId = 11111111-1111-4111-8111-111111111112
+@saleId = 255709f2-9fbc-48bf-91cf-e25214c25c3b
+
+### 1 Login with an existing seller; copy accessToken above
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "userName": "{{username}}",
+  "password": "{{password}}"
+}
+
+### 2 Seller catalog: copy product ID and current priceRevision
+GET {{baseUrl}}/api/branches/{{branchId}}/catalog?pageNumber=1&pageSize=25
+Authorization: Bearer {{sellerToken}}
+
+### 3 Active locations: copy location ID
+GET {{baseUrl}}/api/branches/{{branchId}}/catalog/locations
+Authorization: Bearer {{sellerToken}}
+
+### 4 Available stock before and after the sale
+GET {{baseUrl}}/api/branches/{{branchId}}/catalog/stock?locationId={{locationId}}
+Authorization: Bearer {{sellerToken}}
+
+### 5 Post sale; use a NEW clientSaleId for each NEW sale
+# Example price 170 must be at least the current minimum.
+# Send this exact request again to test retry: 201 first, 200 repeat.
+# Keep the clientSaleId fixed for retry; do not use a changing GUID macro.
+POST {{baseUrl}}/api/branches/{{branchId}}/sales
+Authorization: Bearer {{sellerToken}}
+Content-Type: application/json
+
+{
+  "clientSaleId": "{{clientSaleId}}",
+  "inventoryLocationId": "{{locationId}}",
+  "notes": "Batch 1 test sale",
+  "lines": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 0,
+      "sellingUnitPrice": 170,
+      "priceRevision": {{priceRevision}}
+    }
+  ]
+}
+
+### 6 Invoice detail: copy the returned invoice ID into saleId
+GET {{baseUrl}}/api/branches/{{branchId}}/sales/{{saleId}}
+Authorization: Bearer {{sellerToken}}
+
+### 7 Seller sees only their invoices
+GET {{baseUrl}}/api/branches/{{branchId}}/sales?pageNumber=1&pageSize=25
+Authorization: Bearer {{sellerToken}}
+
+### 8 Manager sees invoices for this assigned branch
+GET {{baseUrl}}/api/branches/{{branchId}}/sales?pageNumber=1&pageSize=25
+Authorization: Bearer {{managerToken}}
+
+### 9 Seller cannot access management baseline pricing: expect 403
+GET {{baseUrl}}/api/branches/{{branchId}}/product-prices/{{productId}}
+Authorization: Bearer {{sellerToken}}

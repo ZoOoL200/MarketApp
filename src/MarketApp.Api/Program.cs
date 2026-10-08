@@ -16,6 +16,7 @@ builder.Services.AddMarketInfrastructure(builder.Configuration);
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 
+builder.Services.AddExceptionHandler<DatabaseConflictHandler>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 builder.Services.AddAuthorization(options =>

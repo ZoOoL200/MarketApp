@@ -1,4 +1,4 @@
-﻿using MarketApp.Application.Common.Exceptions;
+using MarketApp.Application.Common.Exceptions;
 using MarketApp.Application.Persistence.Contracts;
 using MarketApp.Domain.Entity.Inventory;
 using MarketApp.Domain.Entity.Main;
@@ -38,7 +38,8 @@ public class UnitOfWork : IUnitOfWork
         IGeneralRepository<StockMovement> stockMovements,
         IGeneralRepository<StockTransfer> stockTransfers,
         IGeneralRepository<BranchProductPrice> branchProductPrices,
-        IGeneralRepository<BranchProductPriceHistory> branchProductPriceHistories)
+        IGeneralRepository<BranchProductPriceHistory> branchProductPriceHistories,
+        IGeneralRepository<MarketApp.Domain.Entity.Sales.SalesInvoice> salesInvoices)
     {
         _context = context;
         Categories = categories;
@@ -52,6 +53,24 @@ public class UnitOfWork : IUnitOfWork
         StockTransfers = stockTransfers;
         BranchProductPrices = branchProductPrices;
         BranchProductPriceHistories = branchProductPriceHistories;
+        SalesInvoices = salesInvoices;
+    }
+
+    public IGeneralRepository<MarketApp.Domain.Entity.Sales.SalesInvoice> SalesInvoices { get; }
+
+    public async Task<IUnitOfWorkTransaction> BeginSerializableAsync(CancellationToken ct = default)
+        => new UnitOfWorkTransaction(await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct));
+
+    private sealed class UnitOfWorkTransaction(Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction)
+        : IUnitOfWorkTransaction
+    {
+        public async Task CommitAsync(CancellationToken cancellationToken = default)
+        {
+            try { await transaction.CommitAsync(cancellationToken); }
+            catch (PostgresException ex) when (ex.SqlState is "40001" or "40P01")
+            { throw new ConflictException("Concurrent update. Retry the same request with the same client identifier.", ex); }
+        }
+        public ValueTask DisposeAsync() => transaction.DisposeAsync();
     }
 
     public async Task<int> SaveChangesAsync(
@@ -62,6 +81,8 @@ public class UnitOfWork : IUnitOfWork
             return await _context.SaveChangesAsync(
                 cancellationToken);
         }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException pg && pg.SqlState is "40001" or "40P01")
+        { throw new ConflictException("Concurrent update. Retry the same request with the same client identifier.", ex); }
         catch (DbUpdateConcurrencyException exception)
         {
             throw new ConflictException(

@@ -1,4 +1,4 @@
-﻿using MarketApp.Application.Common;
+using MarketApp.Application.Common;
 using MarketApp.Application.DTOs.Stock;
 using MarketApp.Application.Interfaces.Services;
 using MarketApp.Application.Persistence.Contracts;
@@ -98,7 +98,7 @@ public class StockService : IStockService
                 m.PurchaseInvoiceLine?.PurchaseInvoiceId,
                 m.PurchaseInvoiceLineId,
                 m.StockTransferLine?.StockTransferId,
-                m.StockTransferLineId))
+                m.StockTransferLineId) { SalesInvoiceLineId = m.SalesInvoiceLineId })
             .ToList();
 
         return new PagedResult<StockMovementDto>(

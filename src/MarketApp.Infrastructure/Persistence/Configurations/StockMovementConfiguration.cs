@@ -1,4 +1,4 @@
-﻿using MarketApp.Domain.Entity.Inventory;
+using MarketApp.Domain.Entity.Inventory;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -11,27 +11,25 @@ public class StockMovementConfiguration
     {
         builder.ToTable("StockMovements", table =>
         {
-            table.HasCheckConstraint(
-                "CK_StockMovements_TypeAndQuantity",
-                "(\"MovementType\" IN (1, 3, 4) " +
-                "AND \"QuantityChange\" > 0) OR " +
-                "(\"MovementType\" = 2 " +
-                "AND \"QuantityChange\" < 0)");
-
-            table.HasCheckConstraint(
-                "CK_StockMovements_Source",
-                "(" +
-                "\"MovementType\" = 1 " +
-                "AND \"PurchaseInvoiceLineId\" IS NOT NULL " +
-                "AND \"StockTransferLineId\" IS NULL" +
-                ") OR (" +
-                "\"MovementType\" IN (2, 3, 4) " +
-                "AND \"PurchaseInvoiceLineId\" IS NULL " +
-                "AND \"StockTransferLineId\" IS NOT NULL" +
-                ")");
+            table.HasCheckConstraint("CK_StockMovements_TypeAndQuantity",
+                "(\"MovementType\" IN (1, 3, 4) AND \"QuantityChange\" > 0) OR " +
+                "(\"MovementType\" IN (2, 5) AND \"QuantityChange\" < 0)");
+            table.HasCheckConstraint("CK_StockMovements_Source", """
+                ("MovementType" = 1 AND "PurchaseInvoiceLineId" IS NOT NULL
+                    AND "StockTransferLineId" IS NULL AND "SalesInvoiceLineId" IS NULL)
+                OR ("MovementType" IN (2, 3, 4) AND "StockTransferLineId" IS NOT NULL
+                    AND "PurchaseInvoiceLineId" IS NULL AND "SalesInvoiceLineId" IS NULL)
+                OR ("MovementType" = 5 AND "SalesInvoiceLineId" IS NOT NULL
+                    AND "PurchaseInvoiceLineId" IS NULL AND "StockTransferLineId" IS NULL)
+                """);
         });
 
         builder.HasKey(m => m.Id);
+        builder.HasIndex(m => m.SalesInvoiceLineId).IsUnique()
+            .HasFilter("\"SalesInvoiceLineId\" IS NOT NULL")
+            .HasDatabaseName("UX_StockMovements_SalesInvoiceLine");
+        builder.HasOne(m => m.SalesInvoiceLine).WithMany()
+            .HasForeignKey(m => m.SalesInvoiceLineId).OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(m => m.MovementType)
             .HasConversion<int>()
