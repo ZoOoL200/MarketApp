@@ -5,6 +5,8 @@ namespace MarketApp.Application.Interfaces.Services;
 
 public interface IPurchaseInvoiceService
 {
+    Task<MarketApp.Application.Common.PagedResult<PurchaseInvoiceDto>> GetPageAsync(MarketApp.Application.DTOs.Sales.PageQuery page, CancellationToken ct = default);
+
     Task<PurchaseInvoiceResult> CreateAsync(
         CreatePurchaseInvoiceDto request,
         CancellationToken cancellationToken = default);

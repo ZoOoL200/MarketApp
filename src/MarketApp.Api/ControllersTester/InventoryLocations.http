@@ -1,6 +1,7 @@
 @baseUrl = https://localhost:7126
 @branchId = ba7c4374-a68b-4c60-ab06-55ac62505670
 @locationId = 204f06e3-e969-41fd-9c7c-1ba6eff901a6
+@stakeholderToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImUyNmI3YTE3LWZlMTgtNGRlMi1hYzk1LTZlNGJlMzUxMTkzZSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhaG1lZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFobWVkcmFiaWVzYWlkQGdtYWlsLmNvbSIsIkFzcE5ldC5JZGVudGl0eS5TZWN1cml0eVN0YW1wIjoiUlRNT1hYTkRRV1BJR0c3N0FDWjVVUEpEUUg0U1hIS0EiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJTdGFrZWhvbGRlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiOWMwOThjZWYtNWQwMi00MWQ0LTkyOWItODU3MWYzN2VlNmY4Iiwic3ViIjoiZTI2YjdhMTctZmUxOC00ZGUyLWFjOTUtNmU0YmUzNTExOTNlIiwianRpIjoiM2FhM2QyMGRkMzM1NDM3YzhkY2MwN2M3MjI4ZWMyYTgiLCJpYXQiOjE3OTE0NjEyMzcsIm5iZiI6MTc5MTQ2MTIzNywiZXhwIjoxNzkxNDYzMDM3LCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ.5PgmC5D5cfOnp7tfAdAMPI_Kp64N5j8GAd88QlgAnhA
 
 ### Find an active branch
 GET {{baseUrl}}/api/branches?isActive=true
@@ -32,7 +33,7 @@ GET {{baseUrl}}/api/inventory-locations?pageNumber=1&pageSize=20
 
 ### List locations for one branch
 GET {{baseUrl}}/api/inventory-locations?branchId={{branchId}}
-
+Authorization: Bearer {{stakeholderToken}}
 ### Get one location
 GET {{baseUrl}}/api/inventory-locations/{{locationId}}
 

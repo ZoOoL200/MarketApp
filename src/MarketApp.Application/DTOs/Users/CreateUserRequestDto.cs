@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using MarketApp.Application.Common.Security;
 
 namespace MarketApp.Application.DTOs.Users;
@@ -19,7 +19,7 @@ public class CreateUserRequestDto : IValidatableObject
     public string Email { get; set; } = string.Empty;
 
     [Required]
-    [StringLength(1024, MinimumLength = 8)]
+    [StringLength(1024, MinimumLength = 4)]
     public string Password { get; set; } = string.Empty;
 
     [Required]

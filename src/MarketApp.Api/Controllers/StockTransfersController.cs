@@ -1,4 +1,4 @@
-﻿using MarketApp.Application.Common.Results;
+using MarketApp.Application.Common.Results;
 using MarketApp.Application.DTOs.StockTransfers;
 using MarketApp.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -17,6 +17,11 @@ public class StockTransfersController : ControllerBase
     {
         _transferService = transferService;
     }
+
+    [HttpGet]
+    [ProducesResponseType(typeof(MarketApp.Application.Common.PagedResult<MarketApp.Application.DTOs.StockTransfers.StockTransferDto>), 200)]
+    public async Task<IActionResult> List([FromQuery] MarketApp.Application.DTOs.Sales.PageQuery page, CancellationToken ct)
+        => Ok(await _transferService.GetPageAsync(page, ct));
 
     [HttpPost]
     public async Task<ActionResult<StockTransferDto>> Create(

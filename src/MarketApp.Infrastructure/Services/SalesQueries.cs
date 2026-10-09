@@ -61,4 +61,11 @@ public sealed class SalesQueries(AppDbContext db) : ISalesQueries
             s.Id == saleId && s.BranchId == branchId && (sellerId == null || s.SoldByUserId == sellerId), ct);
         return sale is null ? null : SalesService.ToDto(sale);
     }
+    public Task<bool> IsAssignedUserAsync(Guid branchId, Guid userId, string role, CancellationToken ct)
+        => (from assignment in db.UserBranchAssignments
+            join userRole in db.UserRoles on assignment.UserId equals userRole.UserId
+            join r in db.Roles on userRole.RoleId equals r.Id
+            where assignment.BranchId == branchId && assignment.UserId == userId && assignment.User.IsActive && r.Name == role
+            select assignment.UserId).AnyAsync(ct);
+
 }

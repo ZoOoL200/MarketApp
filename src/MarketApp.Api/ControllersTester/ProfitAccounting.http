@@ -1,0 +1,150 @@
+# Profit correction, AFTER Batch 3. Use your MarketApp_Test database.
+# Send requests individually. Replace placeholders; do not run all requests blindly.
+# Prepare a TEST product with baseline 100, minimum 150, stock >= 2, verified purchase cost 80.
+# If using other values, recompute the expected margins. Never invent costs for real stock.
+# Every new test run needs new clientSaleId/clientExpenseId/clientReturnId/clientChangeId GUIDs.
+@baseUrl = https://localhost:7126
+@stakeholderToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImUyNmI3YTE3LWZlMTgtNGRlMi1hYzk1LTZlNGJlMzUxMTkzZSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhaG1lZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFobWVkcmFiaWVzYWlkQGdtYWlsLmNvbSIsIkFzcE5ldC5JZGVudGl0eS5TZWN1cml0eVN0YW1wIjoiUlRNT1hYTkRRV1BJR0c3N0FDWjVVUEpEUUg0U1hIS0EiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJTdGFrZWhvbGRlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiN2U2YmViYTMtYWU1OS00MWFmLTkzOWUtZTYzMWI2MDhjOTE2Iiwic3ViIjoiZTI2YjdhMTctZmUxOC00ZGUyLWFjOTUtNmU0YmUzNTExOTNlIiwianRpIjoiMzBkZThlZjI0NDM5NDVkNjg5NDYyNGYxY2Y2MjRjMzkiLCJpYXQiOjE3OTE1MzkwMzMsIm5iZiI6MTc5MTUzOTAzMywiZXhwIjoxNzkxNTQwODMzLCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ.95ySgUmyyMzee2IZls1JZA4YUG33UxDHTaxQcS9L_mg
+@managerToken = REPLACE_MANAGER_TOKEN
+@sellerToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjBmYjc0NzI1LTQ0Y2ItNDM5MC1hMjhjLTczODdhMzlkZjdjNSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJzZWxsZXIuYnJhbmNoMSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6InNlbGxlcjFAZ21haWwuY29tIiwiQXNwTmV0LklkZW50aXR5LlNlY3VyaXR5U3RhbXAiOiJRRldSN1MyUkRaTDcyRlNWRkhMSUhTUVZRTFBWN1RCRCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlNlbGxlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiMmNkZDRkYzEtYmNmNS00Yzg3LTgwZjgtNjkyZmIyYzM2YzZjIiwic3ViIjoiMGZiNzQ3MjUtNDRjYi00MzkwLWEyOGMtNzM4N2EzOWRmN2M1IiwianRpIjoiZWNkODcwZmQ1M2M5NDJhYWIzNWFjYmY4M2Y4NTRmNTciLCJpYXQiOjE3OTE1MzkzOTUsIm5iZiI6MTc5MTUzOTM5NSwiZXhwIjoxNzkxNTQxMTk1LCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ.cp8c6TwVw3Kjxfbnq_mkPB5fB9HiCyOcuHyELcn4FHw
+@branchId = ba7c4374-a68b-4c60-ab06-55ac62505670
+@locationId = 204f06e3-e969-41fd-9c7c-1ba6eff901a6
+@productId = ca6f2e9a-24b5-4194-bb2a-66ce34b6a469
+@sellerUserId = REPLACE_SELLER_USER_ID
+@priceRevision = 3
+@expectedQuantity = 17
+@verifiedCost = 40
+@fromUtc = REPLACE_START_UTC_Z
+@toUtc = REPLACE_END_UTC_Z
+@expenseUtc = REPLACE_CURRENT_UTC_Z
+@saleId = 26766d1d-7b55-4daf-b5e6-c9efe5cfc559
+@lineId = REPLACE_SALE_LINE_ID
+@expenseId = REPLACE_AFTER_EXPENSE
+
+### 1. Stakeholder reviews stock costs. null means unknown, not zero.
+GET {{baseUrl}}/api/stock-costs?locationId={{locationId}}&pageNumber=1&pageSize=100
+Authorization: Bearer {{stakeholderToken}}
+
+### 2. ONLY for a balance with null cost. Use its current quantity and verified weighted purchase cost.
+# Expected 200. Known cost or changed quantity => 409. Exact retry => same recorded result.
+POST {{baseUrl}}/api/stock-costs/initialize
+Authorization: Bearer {{stakeholderToken}}
+Content-Type: application/json
+
+{
+  "clientChangeId": "c4000000-0000-4000-8000-000000000001",
+  "productId": "{{productId}}",
+  "inventoryLocationId": "{{locationId}}",
+  "expectedQuantity": {{expectedQuantity}},
+  "purchaseUnitCost": {{verifiedCost}},
+  "reason": "Opening stock cost verified against purchase records"
+}
+
+### 3. Seller gets the CURRENT priceRevision from catalog.
+GET {{baseUrl}}/api/branches/{{branchId}}/catalog
+Authorization: Bearer {{sellerToken}}
+
+### 4. Sell two units at 170. Expected 201; copy id and lines[0].id to saleId and lineId.
+# Exact retry is 200 with the same invoice, no extra stock deduction.
+POST {{baseUrl}}/api/branches/{{branchId}}/sales
+Authorization: Bearer {{sellerToken}}
+Content-Type: application/json
+
+{
+  "clientSaleId": "c4000000-0000-4000-8000-000000000002",
+  "inventoryLocationId": "{{locationId}}",
+  "lines": [{ "productId": "{{productId}}", "quantity": 2, "sellingUnitPrice": 170, "priceRevision": {{priceRevision}} }]
+}
+
+### 5. Stakeholder sees saved costs. At cost80/baseline100/sell170: owner40, branch140.
+GET {{baseUrl}}/api/branches/{{branchId}}/sales/{{saleId}}/accounting
+Authorization: Bearer {{stakeholderToken}}
+
+### 6. Owner profit for ALL branches. Range must be <=31 days, both UTC, end exclusive.
+GET {{baseUrl}}/api/reports/stakeholder-profit?fromUtc={{fromUtc}}&toUtc={{toUtc}}
+Authorization: Bearer {{stakeholderToken}}
+
+### 7. Owner profit for ONE branch.
+GET {{baseUrl}}/api/reports/stakeholder-profit?branchId={{branchId}}&fromUtc={{fromUtc}}&toUtc={{toUtc}}
+Authorization: Bearer {{stakeholderToken}}
+
+### 8. Record seller salary expense100. Expected200; copy id to expenseId.
+POST {{baseUrl}}/api/branches/{{branchId}}/expenses
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "clientExpenseId": "c4000000-0000-4000-8000-000000000003",
+  "category": "Salary",
+  "employeeUserId": "{{sellerUserId}}",
+  "amount": 100,
+  "occurredAtUtc": "{{expenseUtc}}",
+  "description": "Test seller salary entry"
+}
+
+### 9. For only this sale+expense: gross140, expenses100, net40. Owner profit remains40.
+# Existing transactions in the date range contribute too; compare report deltas.
+GET {{baseUrl}}/api/branches/{{branchId}}/reports/profit?fromUtc={{fromUtc}}&toUtc={{toUtc}}
+Authorization: Bearer {{managerToken}}
+
+### 10. Reject damaged/non-restocked return. Expected400; stock and profits unchanged.
+POST {{baseUrl}}/api/branches/{{branchId}}/sales/{{saleId}}/returns
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "clientReturnId": "c4000000-0000-4000-8000-000000000004",
+  "reason": "Attempted damaged return",
+  "lines": [{ "salesInvoiceLineId": "{{lineId}}", "quantity": 1, "restock": false }]
+}
+
+### 11. Accept one UNDAMAGED unit after physical receipt. Expected200; stock+1.
+# Original-price reversal: owner20, branch gross70, branch net-30 with the salary100.
+POST {{baseUrl}}/api/branches/{{branchId}}/sales/{{saleId}}/returns
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "clientReturnId": "c4000000-0000-4000-8000-000000000005",
+  "reason": "Undamaged item received back into stock",
+  "lines": [{ "salesInvoiceLineId": "{{lineId}}", "quantity": 1, "restock": true }]
+}
+
+### 12. Return remaining undamaged unit. Expected200; both sale margins now0, expense remains100.
+POST {{baseUrl}}/api/branches/{{branchId}}/sales/{{saleId}}/returns
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "clientReturnId": "c4000000-0000-4000-8000-000000000006",
+  "reason": "Remaining undamaged item received into stock",
+  "lines": [{ "salesInvoiceLineId": "{{lineId}}", "quantity": 1, "restock": true }]
+}
+
+### 13. Seller cannot see purchase costs. Expected403.
+GET {{baseUrl}}/api/stock-costs
+Authorization: Bearer {{sellerToken}}
+
+### 14. Manager cannot read the stakeholder's cost/margin. Expected403.
+GET {{baseUrl}}/api/branches/{{branchId}}/sales/{{saleId}}/accounting
+Authorization: Bearer {{managerToken}}
+
+### 15. Expense history includes voided entries for audit.
+GET {{baseUrl}}/api/branches/{{branchId}}/expenses
+Authorization: Bearer {{managerToken}}
+
+### 16. Void the test salary if it was only test data. Expected200; expense remains in audit history.
+POST {{baseUrl}}/api/branches/{{branchId}}/expenses/{{expenseId}}/void
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{ "reason": "Voiding test expense after verification" }
+
+### 17. OPTIONAL legacy repair ONLY: replace saleId and lineId with an OLD line whose cost is null.
+# Supply a verified original cost. Never use today's cost. Existing captured cost =>409.
+# With verifiedCost80 and reason below, first fill204; exact retry204; a changed cost409.
+PUT {{baseUrl}}/api/branches/{{branchId}}/sales/{{saleId}}/lines/{{lineId}}/purchase-cost
+Authorization: Bearer {{stakeholderToken}}
+Content-Type: application/json
+
+{ "purchaseUnitCost": {{verifiedCost}}, "reason": "Verified historical invoice purchase cost" }

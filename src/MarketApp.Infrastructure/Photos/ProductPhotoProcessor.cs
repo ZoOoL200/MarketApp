@@ -61,11 +61,27 @@ internal static class ProductPhotoProcessor
         cancellationToken.ThrowIfCancellationRequested();
         // Encoding a fresh bitmap omits uploaded EXIF/GPS and other source metadata.
         using var normalized = SKImage.FromBitmap(output);
-        using var encoded = normalized.Encode(SKEncodedImageFormat.Webp, 82);
-        if (encoded is null) throw new InvalidOperationException("WebP encoding failed.");
-        if (encoded.Size > ProductPhotoLimits.MaximumFileBytes)
-            return (null, "The processed image is too large.");
-        return (encoded.ToArray(), null);
+        // Keep each stored display photo within the agreed 150 KiB budget.
+        // Start at full display size, then lower quality and dimensions as needed.
+        for (var attempt = 0; attempt < 12; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var ratio = Math.Pow(0.8, Math.Max(0, attempt - 2));
+            var w = Math.Max(1, (int)Math.Round(outputWidth * ratio));
+            var h = Math.Max(1, (int)Math.Round(outputHeight * ratio));
+            using var smaller = new SKBitmap(new SKImageInfo(w, h, SKColorType.Rgba8888, SKAlphaType.Premul, colorSpace));
+            using (var canvas = new SKCanvas(smaller))
+            {
+                canvas.Clear(SKColors.Transparent);
+                canvas.Scale((float)w / outputWidth, (float)h / outputHeight);
+                canvas.DrawImage(normalized, 0, 0, new SKSamplingOptions(SKFilterMode.Linear));
+            }
+            using var image = SKImage.FromBitmap(smaller);
+            using var encoded = image.Encode(SKEncodedImageFormat.Webp, Math.Max(42, 82 - attempt * 10));
+            if (encoded is null) throw new InvalidOperationException("WebP encoding failed.");
+            if (encoded.Size <= ProductPhotoLimits.MaximumStoredFileBytes) return (encoded.ToArray(), null);
+        }
+        return (null, "The photo could not be compressed to 150 KiB. Choose a simpler image.");
     }
 
     private static void ApplyOrientation(SKCanvas canvas, SKEncodedOrigin origin, int width, int height)

@@ -4,6 +4,11 @@ namespace MarketApp.Domain.Entity.Sales;
 
 public class SalesInvoice
 {
+    public Guid? ManagerUserIdSnapshot { get; set; }
+    public decimal ManagerSharePercentSnapshot { get; set; }
+    public bool IsOffline { get; set; }
+    public Guid? ReconciledByUserId { get; set; }
+    public DateTime? ReconciledAtUtc { get; set; }
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Number { get; set; } = "";
     public Guid ClientSaleId { get; set; }

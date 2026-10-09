@@ -223,6 +223,50 @@ public class TransferReceiptPricingTests
         Assert.Empty(f.ReceiptHistory);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Transfers_preserve_shipped_purchase_cost_on_receipt_or_physical_return(bool returned)
+    {
+        var f = await Fixture.Create();
+        var source = f.Work.Repo<StockBalance>().Items.Single(b => b.InventoryLocationId == f.Source.Id);
+        source.AveragePurchaseUnitCost = 80; f.DestinationBalance.AveragePurchaseUnitCost = 100;
+        var transfer = await f.Dispatch(110);
+        Assert.Equal(80, transfer.Lines.Single().PurchaseUnitCostSnapshot);
+        // Later receipt at source changes source average, not the cost already in transit.
+        await StockCostAccounting.ReceiveAsync(f.Work, source, 5, 120, "Later purchase", default);
+        Assert.Equal(82, source.AveragePurchaseUnitCost);
+        if (returned)
+        {
+            await f.Transfers.RequestReturnAsync(transfer.Id, new() { Reason = "Shipment cancelled" });
+            Assert.Equal(100, source.Quantity); // Goods are still on their way back.
+            var result = await f.Transfers.ConfirmReturnAsync(transfer.Id);
+            Assert.Equal(StockTransferResultStatus.Success, result.Status);
+            Assert.Equal(105, source.Quantity); Assert.Equal(81.904762m, source.AveragePurchaseUnitCost);
+            await f.Transfers.ConfirmReturnAsync(transfer.Id); Assert.Equal(105, source.Quantity);
+        }
+        else
+        {
+            var result = await f.Transfers.ReceiveAsync(transfer.Id, f.Actor);
+            Assert.Equal(StockTransferResultStatus.Success, result.Status);
+            Assert.Equal(15, f.DestinationBalance.Quantity); Assert.Equal(93.333333m, f.DestinationBalance.AveragePurchaseUnitCost);
+            await f.Transfers.ReceiveAsync(transfer.Id, f.Actor); Assert.Equal(15, f.DestinationBalance.Quantity);
+        }
+    }
+
+    [Fact]
+    public async Task Empty_stock_receipt_resets_old_average_and_rounds_cost_once()
+    {
+        var work = new FakeUnitOfWork();
+        var balance = new StockBalance { Quantity = 0, AveragePurchaseUnitCost = 80 };
+        await StockCostAccounting.ReceiveAsync(work, balance, 3, 100m / 3, "New receipt", default);
+        Assert.Equal(33.333333m, balance.AveragePurchaseUnitCost);
+        Assert.Equal(3, balance.Quantity);
+        Assert.Equal(33.333333m, work.Repo<StockCostHistory>().Items.Single().AveragePurchaseUnitCost);
+        await StockCostAccounting.ReceiveAsync(work, balance, 1, null, "Unknown legacy return", default);
+        Assert.Null(balance.AveragePurchaseUnitCost); // Never pretend unknown cost is zero.
+    }
+
     private sealed class Fixture
     {
         public FakeUnitOfWork Work { get; } = new();

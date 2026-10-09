@@ -20,6 +20,8 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IBranchProductPriceService,BranchProductPriceService>();
 
         services.AddScoped<ISalesService, SalesService>();
+        services.AddScoped<IAccountingService, AccountingService>();
+        services.AddScoped<IInventoryOperationsService, InventoryOperationsService>();
         return services;
     }
 }

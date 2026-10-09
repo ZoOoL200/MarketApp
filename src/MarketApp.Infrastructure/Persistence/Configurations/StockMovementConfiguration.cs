@@ -12,18 +12,22 @@ public class StockMovementConfiguration
         builder.ToTable("StockMovements", table =>
         {
             table.HasCheckConstraint("CK_StockMovements_TypeAndQuantity",
-                "(\"MovementType\" IN (1, 3, 4) AND \"QuantityChange\" > 0) OR " +
-                "(\"MovementType\" IN (2, 5) AND \"QuantityChange\" < 0)");
+                "(\"MovementType\" IN (1, 3, 4, 6) AND \"QuantityChange\" > 0) OR " +
+                "(\"MovementType\" IN (2, 5) AND \"QuantityChange\" < 0) OR (\"MovementType\" = 7 AND \"QuantityChange\" <> 0)");
             table.HasCheckConstraint("CK_StockMovements_Source", """
-                ("MovementType" = 1 AND "PurchaseInvoiceLineId" IS NOT NULL
-                    AND "StockTransferLineId" IS NULL AND "SalesInvoiceLineId" IS NULL)
-                OR ("MovementType" IN (2, 3, 4) AND "StockTransferLineId" IS NOT NULL
-                    AND "PurchaseInvoiceLineId" IS NULL AND "SalesInvoiceLineId" IS NULL)
-                OR ("MovementType" = 5 AND "SalesInvoiceLineId" IS NOT NULL
-                    AND "PurchaseInvoiceLineId" IS NULL AND "StockTransferLineId" IS NULL)
+                num_nonnulls("PurchaseInvoiceLineId", "StockTransferLineId", "SalesInvoiceLineId", "SalesReturnLineId", "StockAdjustmentId") = 1 AND (
+                ("MovementType" = 1 AND "PurchaseInvoiceLineId" IS NOT NULL)
+                OR ("MovementType" IN (2, 3, 4) AND "StockTransferLineId" IS NOT NULL)
+                OR ("MovementType" = 5 AND "SalesInvoiceLineId" IS NOT NULL)
+                OR ("MovementType" = 6 AND "SalesReturnLineId" IS NOT NULL)
+                OR ("MovementType" = 7 AND "StockAdjustmentId" IS NOT NULL))
                 """);
         });
 
+        builder.HasIndex(m => m.SalesReturnLineId).IsUnique().HasFilter("\"SalesReturnLineId\" IS NOT NULL");
+        builder.HasOne(m => m.SalesReturnLine).WithMany().HasForeignKey(m => m.SalesReturnLineId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(m => m.StockAdjustmentId).IsUnique().HasFilter("\"StockAdjustmentId\" IS NOT NULL");
+        builder.HasOne(m => m.StockAdjustment).WithMany().HasForeignKey(m => m.StockAdjustmentId).OnDelete(DeleteBehavior.Restrict);
         builder.HasKey(m => m.Id);
         builder.HasIndex(m => m.SalesInvoiceLineId).IsUnique()
             .HasFilter("\"SalesInvoiceLineId\" IS NOT NULL")

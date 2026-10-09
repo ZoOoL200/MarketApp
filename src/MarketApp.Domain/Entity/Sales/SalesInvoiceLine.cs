@@ -4,6 +4,13 @@ namespace MarketApp.Domain.Entity.Sales;
 
 public class SalesInvoiceLine
 {
+    public decimal? PurchaseUnitCostSnapshot { get; set; }
+    public Guid? PurchaseCostRecordedByUserId { get; set; }
+    public DateTime? PurchaseCostRecordedAtUtc { get; set; }
+    public string? PurchaseCostRecordHash { get; set; }
+    public string? PurchaseCostReason { get; set; }
+    public decimal ReturnedQuantity { get; set; }
+    public uint Version { get; set; }
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid SalesInvoiceId { get; set; }
     public SalesInvoice SalesInvoice { get; set; } = null!;

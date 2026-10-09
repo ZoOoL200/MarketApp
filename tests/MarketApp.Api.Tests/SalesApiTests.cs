@@ -1,3 +1,6 @@
+using MarketApp.Api.Configuration;
+using MarketApp.Api.Documentation;
+using Microsoft.Extensions.Configuration;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
@@ -44,7 +47,7 @@ using Npgsql;
 
 namespace MarketApp.Api.Tests;
 
-public sealed class SalesApiTests : IDisposable
+public sealed partial class SalesApiTests : IDisposable
 {
     private readonly SqliteConnection _sqlite = new("Data Source=:memory:");
     private readonly string? _postgres;
@@ -71,8 +74,10 @@ public sealed class SalesApiTests : IDisposable
             if (_postgres is null) db.Database.EnsureCreated(); else db.GetService<IRelationalDatabaseCreator>().CreateTables();
             Seed(db);
         }
-        _host = new HostBuilder().ConfigureWebHost(web => web.UseTestServer().ConfigureServices(services =>
+        _host = new HostBuilder().UseEnvironment("Development").ConfigureWebHost(web => web.UseTestServer().ConfigureServices(services =>
         {
+            services.AddMarketOperations(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Cors:AllowedOrigins:0"] = "https://manager.example.com" }).Build(), new Microsoft.Extensions.Hosting.Internal.HostingEnvironment { EnvironmentName = "Development" });
+            services.AddMarketOpenApi();
             services.AddLogging(); services.AddControllers().AddApplicationPart(typeof(SalesController).Assembly);
             services.AddProblemDetails(); services.AddExceptionHandler<DatabaseConflictHandler>(); services.AddExceptionHandler<GlobalExceptionHandler>();
             services.AddDataProtection();
@@ -114,14 +119,20 @@ public sealed class SalesApiTests : IDisposable
             services.AddScoped(typeof(IGeneralRepository<>), typeof(GeneralRepository<>));
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<ISalesService, SalesService>();
+            services.AddScoped<IAccountingService, AccountingService>();
+            services.AddScoped<IPurchaseInvoiceService, PurchaseInvoiceService>();
+            services.AddScoped<IStockTransferService, StockTransferService>();
             services.AddScoped<ISalesQueries, SalesQueries>();
+            services.AddScoped<IInventoryOperationsService, InventoryOperationsService>();
+            services.AddScoped<IAccountingQueries, AccountingQueries>();
+            services.AddScoped<IInventoryOperationsQueries, InventoryOperationsQueries>();
             services.AddScoped<IBranchAccessService, BranchAccessService>();
         }).Configure(app =>
         {
-            app.UseExceptionHandler(); app.UseRouting(); app.UseAuthentication();
+            app.UseExceptionHandler(); app.UseRouting(); app.UseCors("ManagerWeb"); app.UseRateLimiter(); app.UseAuthentication();
             app.UseWhen(context => context.Request.Headers.ContainsKey("Authorization"), branch => branch.UseMiddleware<IdentitySessionMiddleware>());
             app.UseAuthorization();
-            app.UseEndpoints(e => { e.MapControllers(); });
+            app.UseEndpoints(e => { e.MapControllers(); e.MapOpenApi().RequireAuthorization(); e.MapMarketHealth(); });
         })).Start();
         _client = _host.GetTestClient(); Role(AppRoles.Seller, _seller);
     }
@@ -142,7 +153,8 @@ public sealed class SalesApiTests : IDisposable
         db.Roles.AddRange(sellerRole, managerRole);
         db.UserRoles.AddRange(new() { UserId = _seller, RoleId = sellerRole.Id }, new() { UserId = _manager, RoleId = managerRole.Id });
         db.UserBranchAssignments.AddRange(new() { UserId = _seller, BranchId = _branch }, new() { UserId = _otherSeller, BranchId = _branch }, new() { UserId = _manager, BranchId = _branch });
-        db.StockBalances.Add(new() { ProductId = _product, InventoryLocationId = _location, Quantity = 10 });
+        db.StockBalances.Add(new() { ProductId = _product, InventoryLocationId = _location, Quantity = 10, AveragePurchaseUnitCost = 80 });
+        db.StockCostHistories.Add(new() { ProductId = _product, InventoryLocationId = _location, AveragePurchaseUnitCost = 80, QuantityAtChange = 10, Reason = "Test seed", EffectiveAtUtc = DateTime.UtcNow.AddDays(-1) });
         var price = new BranchProductPrice { BranchId = _branch, ProductId = _product, BaselineUnitPrice = 100,
             MinimumSellingPrice = 150, Revision = 1, BaselineRevision = 1 };
         db.BranchProductPrices.Add(price);

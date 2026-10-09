@@ -25,10 +25,18 @@ public sealed class PageQuery
 }
 // Seller-safe DTOs deliberately contain no baseline, gross profit or manager share.
 public record SaleLineDto(Guid Id, Guid ProductId, string ProductName, string Sku,
-    decimal Quantity, decimal SellingUnitPrice, decimal Total);
+    decimal Quantity, decimal SellingUnitPrice, decimal Total)
+{
+    public decimal ReturnedQuantity { get; init; }
+}
 public record SaleDto(Guid Id, string Number, Guid ClientSaleId, Guid BranchId,
     Guid InventoryLocationId, Guid SoldByUserId, DateTime SoldAtUtc, DateTime CreatedAtUtc,
-    string? Notes, decimal Total, IReadOnlyList<SaleLineDto> Lines);
+    string? Notes, decimal Total, IReadOnlyList<SaleLineDto> Lines)
+{
+    public bool IsOffline { get; init; }
+    public Guid? ReconciledByUserId { get; init; }
+    public DateTime? ReconciledAtUtc { get; init; }
+}
 public record PostedSaleDto(bool AlreadyProcessed, SaleDto Sale);
 public record CatalogProductDto(Guid Id, string Name, string Sku,
     decimal? MinimumSellingPrice, int PriceRevision, IReadOnlyList<ProductPhotoDto> Photos);

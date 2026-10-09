@@ -1,4 +1,4 @@
-﻿using MarketApp.Application.Common.Security;
+using MarketApp.Application.Common.Security;
 using MarketApp.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -27,6 +27,7 @@ public class SellingPricesController : ControllerBase
     }
 
     [HttpGet("{productId:guid}")]
+    [ProducesResponseType(typeof(MarketApp.Application.DTOs.Pricing.SellerProductPriceDto), 200)]
     public async Task<IActionResult> Get(
         Guid branchId,
         Guid productId,

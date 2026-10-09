@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 
@@ -102,7 +103,10 @@ public static class ServiceCollectionsExtension
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<IAuthSessionService, AuthSessionService>();
 
-        services.AddScoped<IApplicationEmailSender, DevelopmentEmailSender>();
+        services.AddScoped<IApplicationEmailSender>(provider =>
+            string.Equals(configuration["Email:Provider"], "Smtp", StringComparison.OrdinalIgnoreCase) || !provider.GetRequiredService<IHostEnvironment>().IsDevelopment()
+                ? ActivatorUtilities.CreateInstance<SmtpEmailSender>(provider)
+                : ActivatorUtilities.CreateInstance<DevelopmentEmailSender>(provider));
         services.AddScoped<IEmailVerificationService, EmailVerificationService>();
 
         services.Configure<DataProtectionTokenProviderOptions>(options =>
@@ -115,6 +119,8 @@ public static class ServiceCollectionsExtension
         services.AddScoped<IBranchAccessService, BranchAccessService>();
 
         services.AddScoped<ISalesQueries, MarketApp.Infrastructure.Services.SalesQueries>();
+        services.AddScoped<IAccountingQueries, MarketApp.Infrastructure.Services.AccountingQueries>();
+        services.AddScoped<IInventoryOperationsQueries, MarketApp.Infrastructure.Services.InventoryOperationsQueries>();
         services.AddProductPhotos(configuration);
 
         return services;

@@ -1,0 +1,115 @@
+# Batch 2: run individual requests in order, against MarketApp_Test.
+# Copy tokens/IDs from your existing login and Sales.http responses.
+# Generate a different GUID for each NEW sale/return/adjustment; keep it unchanged for retries.
+# Fixed sample IDs below are safe only for your first run; replace them for a new test run.
+@baseUrl = https://localhost:7126
+@sellerToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjBmYjc0NzI1LTQ0Y2ItNDM5MC1hMjhjLTczODdhMzlkZjdjNSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJzZWxsZXIuYnJhbmNoMSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6InNlbGxlcjFAZ21haWwuY29tIiwiQXNwTmV0LklkZW50aXR5LlNlY3VyaXR5U3RhbXAiOiJRRldSN1MyUkRaTDcyRlNWRkhMSUhTUVZRTFBWN1RCRCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlNlbGxlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiYzAwNGQ0MmUtNWE2OS00NzNlLWEyZWItMTdhYmMxNzA1NzRiIiwic3ViIjoiMGZiNzQ3MjUtNDRjYi00MzkwLWEyOGMtNzM4N2EzOWRmN2M1IiwianRpIjoiYjhhYTZmNDJkMTc1NGUxN2ExNzQzYjdlYzhmZDA3NDAiLCJpYXQiOjE3OTE0NjE1NDMsIm5iZiI6MTc5MTQ2MTU0MywiZXhwIjoxNzkxNDYzMzQzLCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ.qryOw9ZwW39dH3_294um9NVhigMR3P1kuW3qFkJhCbU
+@managerToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjRiNjE2MzYzLTAwNmYtNGE3ZS1iZjk4LWYwZGI2NTA5ZjE0YiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJtYW5hZ2VyLmJyYW5jaDEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJtYW5hZ2VyMUBnbWFpbC5jb20iLCJBc3BOZXQuSWRlbnRpdHkuU2VjdXJpdHlTdGFtcCI6IjNGU0EySTRSVVJaTEMyM0E3SE9DSVcyVUxONERSQ1VWIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQnJhbmNoTWFuYWdlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiYmM3NGEzNjQtMDU0NS00Mjk3LTgzNDQtNmQ1MjZlOTE0NjgzIiwic3ViIjoiNGI2MTYzNjMtMDA2Zi00YTdlLWJmOTgtZjBkYjY1MDlmMTRiIiwianRpIjoiNGVmZWY1MzFmYjk4NDRhMTk0YmRmYmI1ODdhYWUyYjEiLCJpYXQiOjE3OTE0NjA5ODIsIm5iZiI6MTc5MTQ2MDk4MiwiZXhwIjoxNzkxNDYyNzgyLCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ.NQ7Pe78Tu58I7qYjT6RbO9ZZYL3mpLuxJtiLvvJO6bc
+@stakeholderToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImUyNmI3YTE3LWZlMTgtNGRlMi1hYzk1LTZlNGJlMzUxMTkzZSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhaG1lZCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6ImFobWVkcmFiaWVzYWlkQGdtYWlsLmNvbSIsIkFzcE5ldC5JZGVudGl0eS5TZWN1cml0eVN0YW1wIjoiUlRNT1hYTkRRV1BJR0c3N0FDWjVVUEpEUUg0U1hIS0EiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJTdGFrZWhvbGRlciIsIm1hcmtldDpzZXNzaW9uX2lkIjoiOWMwOThjZWYtNWQwMi00MWQ0LTkyOWItODU3MWYzN2VlNmY4Iiwic3ViIjoiZTI2YjdhMTctZmUxOC00ZGUyLWFjOTUtNmU0YmUzNTExOTNlIiwianRpIjoiM2FhM2QyMGRkMzM1NDM3YzhkY2MwN2M3MjI4ZWMyYTgiLCJpYXQiOjE3OTE0NjEyMzcsIm5iZiI6MTc5MTQ2MTIzNywiZXhwIjoxNzkxNDYzMDM3LCJpc3MiOiJNYXJrZXRBcHAuQXBpIiwiYXVkIjoiTWFya2V0QXBwLkNsaWVudHMifQ.5PgmC5D5cfOnp7tfAdAMPI_Kp64N5j8GAd88QlgAnhA
+@branchId = ba7c4374-a68b-4c60-ab06-55ac62505670
+@locationId = 204f06e3-e969-41fd-9c7c-1ba6eff901a6
+@productId = ca6f2e9a-24b5-4194-bb2a-66ce34b6a469
+@sellerId = REPLACE_SELLER_USER_ID
+@saleId = 255709f2-9fbc-48bf-91cf-e25214c25c3b
+@saleLineId = f0d3b5f0-44d8-4754-845a-a59291ef7c93
+@priceRevision = 1
+@sellingPrice = 170
+# Set these before sending: ISO UTC ending Z; soldAt must follow the price revision's effective time.
+@soldAtUtc = REPLACE_WITH_ACTUAL_OFFLINE_SALE_UTC
+@fromUtc = REPLACE_REPORT_START_UTC
+@toUtc = REPLACE_REPORT_END_UTC
+
+### 1. Read original sale: note its quantity, selling price, and returnedQuantity.
+GET {{baseUrl}}/api/branches/{{branchId}}/sales/{{saleId}}
+Authorization: Bearer {{managerToken}}
+
+### 2. Return one item to its original stock location. Expected 200.
+# Repeat EXACTLY: same return ID, refund record, and stock balance (no second refund/restock).
+POST {{baseUrl}}/api/branches/{{branchId}}/sales/{{saleId}}/returns
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "clientReturnId": "b2000000-0000-4000-8000-000000000001",
+  "reason": "Customer returned unopened item",
+  "lines": [{ "salesInvoiceLineId": "{{saleLineId}}", "quantity": 1, "restock": true }]
+}
+
+### 3. Return history: expected 200; seller token instead must receive 403.
+GET {{baseUrl}}/api/branches/{{branchId}}/sales-returns?pageNumber=1&pageSize=25
+Authorization: Bearer {{managerToken}}
+
+### 4. Oversized return: expected 409 with no stock/refund change.
+POST {{baseUrl}}/api/branches/{{branchId}}/sales/{{saleId}}/returns
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "clientReturnId": "b2000000-0000-4000-8000-000000000002",
+  "reason": "Over-return rejection test",
+  "lines": [{ "salesInvoiceLineId": "{{saleLineId}}", "quantity": 1000000, "restock": true }]
+}
+
+### 5. Stakeholder adds 3 units after a physical count: expected 200.
+# Repeat EXACTLY: same adjustment, stock only increased once.
+POST {{baseUrl}}/api/stock-adjustments
+Authorization: Bearer {{stakeholderToken}}
+Content-Type: application/json
+
+{
+  "clientAdjustmentId": "b2000000-0000-4000-8000-000000000003",
+  "inventoryLocationId": "{{locationId}}",
+  "productId": "{{productId}}",
+  "quantityChange": 3,
+  "reason": "Physical count found three extra units"
+}
+
+### 6. Adjustment audit: expected 200; manager/seller token must receive 403.
+GET {{baseUrl}}/api/stock-adjustments?pageNumber=1&pageSize=25
+Authorization: Bearer {{stakeholderToken}}
+
+### 7. Current stock: compare against your starting balance.
+GET {{baseUrl}}/api/branches/{{branchId}}/catalog/stock?locationId={{locationId}}
+Authorization: Bearer {{sellerToken}}
+
+### 8. Sync one recorded offline sale: expected 201; exact repeat 200, stock deducted once.
+# Price must be >= the minimum, stock >= 1, and revision current AND effective at soldAtUtc.
+POST {{baseUrl}}/api/branches/{{branchId}}/sales/sync
+Authorization: Bearer {{sellerToken}}
+Content-Type: application/json
+
+{
+  "soldAtUtc": "{{soldAtUtc}}",
+  "sale": {
+    "clientSaleId": "b2000000-0000-4000-8000-000000000004",
+    "inventoryLocationId": "{{locationId}}",
+    "notes": "Offline sale synchronization test",
+    "lines": [{ "productId": "{{productId}}", "quantity": 1, "sellingUnitPrice": {{sellingPrice}}, "priceRevision": {{priceRevision}} }]
+  }
+}
+
+### 9. OPTIONAL separate stale-price scenario; read docs/batch-2-update.md first.
+# Use a NEW clientSaleId in request 8, record old revision/price/time, then change branch pricing.
+# Request 8 must return 409. Copy its EXACT submission below, including the NEW ID and notes.
+# Stakeholder reconciliation: expected 201; repeat 200. Do not run against an already posted sale.
+POST {{baseUrl}}/api/branches/{{branchId}}/sales/reconcile
+Authorization: Bearer {{stakeholderToken}}
+Content-Type: application/json
+
+{
+  "originalSellerUserId": "{{sellerId}}",
+  "submission": {
+    "soldAtUtc": "{{soldAtUtc}}",
+    "sale": {
+      "clientSaleId": "REPLACE_WITH_STALE_SALE_CLIENT_ID",
+      "inventoryLocationId": "{{locationId}}",
+      "notes": "Offline sale synchronization test",
+      "lines": [{ "productId": "{{productId}}", "quantity": 1, "sellingUnitPrice": {{sellingPrice}}, "priceRevision": {{priceRevision}} }]
+    }
+  }
+}
+
+### 10. Gross branch profit: UTC interval [fromUtc,toUtc), max 31 days.
+# Expected 200 for branch manager/stakeholder; seller must receive 403.
+GET {{baseUrl}}/api/branches/{{branchId}}/reports/profit?fromUtc={{fromUtc}}&toUtc={{toUtc}}
+Authorization: Bearer {{managerToken}}

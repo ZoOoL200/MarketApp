@@ -1,4 +1,4 @@
-﻿using MarketApp.Application.Common.Results;
+using MarketApp.Application.Common.Results;
 using MarketApp.Application.DTOs.Purchases;
 using MarketApp.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -16,6 +16,11 @@ public class PurchaseInvoicesController : ControllerBase
     {
         _purchaseService = purchaseService;
     }
+
+    [HttpGet]
+    [ProducesResponseType(typeof(MarketApp.Application.Common.PagedResult<MarketApp.Application.DTOs.Purchases.PurchaseInvoiceDto>), 200)]
+    public async Task<IActionResult> List([FromQuery] MarketApp.Application.DTOs.Sales.PageQuery page, CancellationToken ct)
+        => Ok(await _purchaseService.GetPageAsync(page, ct));
 
     [HttpPost]
     public async Task<ActionResult<PurchaseInvoiceDto>> Create(

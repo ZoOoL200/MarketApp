@@ -28,6 +28,10 @@ namespace MarketApp.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<decimal?>("AveragePurchaseUnitCost")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
                     b.Property<Guid>("InventoryLocationId")
                         .HasColumnType("uuid");
 
@@ -54,7 +58,64 @@ namespace MarketApp.Infrastructure.Migrations
 
                     b.ToTable("StockBalances", null, t =>
                         {
+                            t.HasCheckConstraint("CK_BalanceCost_Nonnegative", "\"AveragePurchaseUnitCost\" >= 0");
+
                             t.HasCheckConstraint("CK_StockBalances_Quantity_NonNegative", "\"Quantity\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockCostHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("AveragePurchaseUnitCost")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<Guid?>("ClientChangeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("EffectiveAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InventoryLocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("QuantityAtChange")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid?>("RecordedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RequestHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientChangeId")
+                        .IsUnique();
+
+                    b.HasIndex("InventoryLocationId");
+
+                    b.HasIndex("RecordedByUserId");
+
+                    b.HasIndex("ProductId", "InventoryLocationId", "EffectiveAtUtc", "Id");
+
+                    b.ToTable("StockCostHistories", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_StockCostHistory_Values", "\"AveragePurchaseUnitCost\" >= 0 AND \"QuantityAtChange\" >= 0");
                         });
                 });
 
@@ -86,6 +147,12 @@ namespace MarketApp.Infrastructure.Migrations
                     b.Property<Guid?>("SalesInvoiceLineId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("SalesReturnLineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("StockAdjustmentId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("StockTransferLineId")
                         .HasColumnType("uuid");
 
@@ -103,6 +170,14 @@ namespace MarketApp.Infrastructure.Migrations
                         .HasDatabaseName("UX_StockMovements_SalesInvoiceLine")
                         .HasFilter("\"SalesInvoiceLineId\" IS NOT NULL");
 
+                    b.HasIndex("SalesReturnLineId")
+                        .IsUnique()
+                        .HasFilter("\"SalesReturnLineId\" IS NOT NULL");
+
+                    b.HasIndex("StockAdjustmentId")
+                        .IsUnique()
+                        .HasFilter("\"StockAdjustmentId\" IS NOT NULL");
+
                     b.HasIndex("StockTransferLineId", "MovementType")
                         .IsUnique()
                         .HasDatabaseName("UX_StockMovements_TransferLine_Type")
@@ -113,9 +188,9 @@ namespace MarketApp.Infrastructure.Migrations
 
                     b.ToTable("StockMovements", null, t =>
                         {
-                            t.HasCheckConstraint("CK_StockMovements_Source", "(\"MovementType\" = 1 AND \"PurchaseInvoiceLineId\" IS NOT NULL\n    AND \"StockTransferLineId\" IS NULL AND \"SalesInvoiceLineId\" IS NULL)\nOR (\"MovementType\" IN (2, 3, 4) AND \"StockTransferLineId\" IS NOT NULL\n    AND \"PurchaseInvoiceLineId\" IS NULL AND \"SalesInvoiceLineId\" IS NULL)\nOR (\"MovementType\" = 5 AND \"SalesInvoiceLineId\" IS NOT NULL\n    AND \"PurchaseInvoiceLineId\" IS NULL AND \"StockTransferLineId\" IS NULL)");
+                            t.HasCheckConstraint("CK_StockMovements_Source", "num_nonnulls(\"PurchaseInvoiceLineId\", \"StockTransferLineId\", \"SalesInvoiceLineId\", \"SalesReturnLineId\", \"StockAdjustmentId\") = 1 AND (\r\n(\"MovementType\" = 1 AND \"PurchaseInvoiceLineId\" IS NOT NULL)\r\nOR (\"MovementType\" IN (2, 3, 4) AND \"StockTransferLineId\" IS NOT NULL)\r\nOR (\"MovementType\" = 5 AND \"SalesInvoiceLineId\" IS NOT NULL)\r\nOR (\"MovementType\" = 6 AND \"SalesReturnLineId\" IS NOT NULL)\r\nOR (\"MovementType\" = 7 AND \"StockAdjustmentId\" IS NOT NULL))");
 
-                            t.HasCheckConstraint("CK_StockMovements_TypeAndQuantity", "(\"MovementType\" IN (1, 3, 4) AND \"QuantityChange\" > 0) OR (\"MovementType\" IN (2, 5) AND \"QuantityChange\" < 0)");
+                            t.HasCheckConstraint("CK_StockMovements_TypeAndQuantity", "(\"MovementType\" IN (1, 3, 4, 6) AND \"QuantityChange\" > 0) OR (\"MovementType\" IN (2, 5) AND \"QuantityChange\" < 0) OR (\"MovementType\" = 7 AND \"QuantityChange\" <> 0)");
                         });
                 });
 
@@ -211,6 +286,10 @@ namespace MarketApp.Infrastructure.Migrations
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uuid");
 
+                    b.Property<decimal?>("PurchaseUnitCostSnapshot")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
                     b.Property<decimal>("Quantity")
                         .HasPrecision(18, 3)
                         .HasColumnType("numeric(18,3)");
@@ -235,6 +314,8 @@ namespace MarketApp.Infrastructure.Migrations
                             t.HasCheckConstraint("CK_StockTransferLines_LineNumber", "\"LineNumber\" > 0");
 
                             t.HasCheckConstraint("CK_StockTransferLines_Quantity", "\"Quantity\" > 0");
+
+                            t.HasCheckConstraint("CK_TransferCost_Nonnegative", "\"PurchaseUnitCostSnapshot\" >= 0");
                         });
                 });
 
@@ -683,6 +764,141 @@ namespace MarketApp.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.BranchExpense", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("ClientExpenseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid?>("EmployeeUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("VoidedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("VoidedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("EmployeeUserId");
+
+                    b.HasIndex("VoidedByUserId");
+
+                    b.HasIndex("BranchId", "ClientExpenseId")
+                        .IsUnique();
+
+                    b.HasIndex("BranchId", "OccurredAtUtc", "Id");
+
+                    b.ToTable("BranchExpenses", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_BranchExpense_Amount", "\"Amount\" > 0");
+
+                            t.HasCheckConstraint("CK_BranchExpense_Category", "\"Category\" IN ('Salary','Rent','Other')");
+
+                            t.HasCheckConstraint("CK_BranchExpense_Void", "(\"VoidedAtUtc\" IS NULL AND \"VoidedByUserId\" IS NULL AND \"VoidReason\" IS NULL) OR\r\n(\"VoidedAtUtc\" IS NOT NULL AND \"VoidedByUserId\" IS NOT NULL AND \"VoidReason\" IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.ManagerProfitShare", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientChangeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("EffectiveFromUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ManagerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Percent")
+                        .HasPrecision(7, 4)
+                        .HasColumnType("numeric(7,4)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ManagerUserId");
+
+                    b.HasIndex("BranchId", "ClientChangeId")
+                        .IsUnique();
+
+                    b.HasIndex("BranchId", "EffectiveFromUtc")
+                        .IsUnique();
+
+                    b.ToTable("ManagerProfitShares", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ManagerShare_Percent", "\"Percent\" BETWEEN 0 AND 100");
+                        });
+                });
+
             modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesInvoice", b =>
                 {
                     b.Property<Guid>("Id")
@@ -701,6 +917,16 @@ namespace MarketApp.Infrastructure.Migrations
                     b.Property<Guid>("InventoryLocationId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("IsOffline")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("ManagerSharePercentSnapshot")
+                        .HasPrecision(7, 4)
+                        .HasColumnType("numeric(7,4)");
+
+                    b.Property<Guid?>("ManagerUserIdSnapshot")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
@@ -709,6 +935,12 @@ namespace MarketApp.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime?>("ReconciledAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReconciledByUserId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("RequestHash")
                         .IsRequired()
@@ -725,8 +957,12 @@ namespace MarketApp.Infrastructure.Migrations
 
                     b.HasIndex("InventoryLocationId");
 
+                    b.HasIndex("ManagerUserIdSnapshot");
+
                     b.HasIndex("Number")
                         .IsUnique();
+
+                    b.HasIndex("ReconciledByUserId");
 
                     b.HasIndex("SoldByUserId");
 
@@ -735,7 +971,12 @@ namespace MarketApp.Infrastructure.Migrations
 
                     b.HasIndex("BranchId", "SoldAtUtc", "Id");
 
-                    b.ToTable("SalesInvoices");
+                    b.ToTable("SalesInvoices", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SalesInvoices_ManagerShare", "\"ManagerSharePercentSnapshot\" BETWEEN 0 AND 100 AND\r\n(\"ManagerUserIdSnapshot\" IS NOT NULL OR \"ManagerSharePercentSnapshot\" = 0)");
+
+                            t.HasCheckConstraint("CK_SalesInvoices_Reconciliation", "(\"ReconciledByUserId\" IS NULL AND \"ReconciledAtUtc\" IS NULL) OR\r\n(\"ReconciledByUserId\" IS NOT NULL AND \"ReconciledAtUtc\" IS NOT NULL AND \"IsOffline\")");
+                        });
                 });
 
             modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesInvoiceLine", b =>
@@ -771,7 +1012,29 @@ namespace MarketApp.Infrastructure.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<string>("PurchaseCostReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("PurchaseCostRecordHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("PurchaseCostRecordedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("PurchaseCostRecordedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("PurchaseUnitCostSnapshot")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
                     b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<decimal>("ReturnedQuantity")
                         .HasPrecision(18, 3)
                         .HasColumnType("numeric(18,3)");
 
@@ -782,9 +1045,17 @@ namespace MarketApp.Infrastructure.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ProductId");
+
+                    b.HasIndex("PurchaseCostRecordedByUserId");
 
                     b.HasIndex("SalesInvoiceId", "LineNumber")
                         .IsUnique();
@@ -794,11 +1065,152 @@ namespace MarketApp.Infrastructure.Migrations
 
                     b.ToTable("SalesInvoiceLines", null, t =>
                         {
+                            t.HasCheckConstraint("CK_SaleCost_Nonnegative", "\"PurchaseUnitCostSnapshot\" >= 0");
+
                             t.HasCheckConstraint("CK_SalesLines_Price", "\"BaselineUnitPriceSnapshot\" >= 0 AND \"MinimumSellingPriceSnapshot\" >= 0 AND \"SellingUnitPrice\" >= \"MinimumSellingPriceSnapshot\"");
 
-                            t.HasCheckConstraint("CK_SalesLines_Quantity", "\"Quantity\" > 0");
+                            t.HasCheckConstraint("CK_SalesLines_Quantity", "\"Quantity\" > 0 AND \"ReturnedQuantity\" >= 0 AND \"ReturnedQuantity\" <= \"Quantity\"");
 
                             t.HasCheckConstraint("CK_SalesLines_Sequence", "\"LineNumber\" > 0 AND \"PriceRevisionSnapshot\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesReturn", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientReturnId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("SalesInvoiceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("SalesInvoiceId");
+
+                    b.HasIndex("BranchId", "ClientReturnId")
+                        .IsUnique();
+
+                    b.HasIndex("BranchId", "CreatedAtUtc", "Id");
+
+                    b.ToTable("SalesReturns");
+                });
+
+            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesReturnLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<bool>("Restock")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("SalesInvoiceLineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SalesReturnId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SalesInvoiceLineId");
+
+                    b.HasIndex("SalesReturnId", "SalesInvoiceLineId")
+                        .IsUnique();
+
+                    b.ToTable("SalesReturnLines", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ReturnLines_Quantity", "\"Quantity\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.StockAdjustment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientAdjustmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("InventoryLocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("QuantityChange")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientAdjustmentId")
+                        .IsUnique();
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("InventoryLocationId");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("CreatedAtUtc", "Id");
+
+                    b.ToTable("StockAdjustments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Adjustments_Quantity", "\"QuantityChange\" <> 0");
                         });
                 });
 
@@ -1143,6 +1555,26 @@ namespace MarketApp.Infrastructure.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockCostHistory", b =>
+                {
+                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", null)
+                        .WithMany()
+                        .HasForeignKey("InventoryLocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarketApp.Domain.Entity.Main.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("RecordedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockMovement", b =>
                 {
                     b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "InventoryLocation")
@@ -1167,6 +1599,16 @@ namespace MarketApp.Infrastructure.Migrations
                         .HasForeignKey("SalesInvoiceLineId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("MarketApp.Domain.Entity.Sales.SalesReturnLine", "SalesReturnLine")
+                        .WithMany()
+                        .HasForeignKey("SalesReturnLineId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MarketApp.Domain.Entity.Sales.StockAdjustment", "StockAdjustment")
+                        .WithMany()
+                        .HasForeignKey("StockAdjustmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("MarketApp.Domain.Entity.Inventory.StockTransferLine", "StockTransferLine")
                         .WithMany()
                         .HasForeignKey("StockTransferLineId")
@@ -1179,6 +1621,10 @@ namespace MarketApp.Infrastructure.Migrations
                     b.Navigation("PurchaseInvoiceLine");
 
                     b.Navigation("SalesInvoiceLine");
+
+                    b.Navigation("SalesReturnLine");
+
+                    b.Navigation("StockAdjustment");
 
                     b.Navigation("StockTransferLine");
                 });
@@ -1328,6 +1774,56 @@ namespace MarketApp.Infrastructure.Migrations
                     b.Navigation("PurchaseInvoice");
                 });
 
+            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.BranchExpense", b =>
+                {
+                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("VoidedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Branch");
+                });
+
+            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.ManagerProfitShare", b =>
+                {
+                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("ManagerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+                });
+
             modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesInvoice", b =>
                 {
                     b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
@@ -1341,6 +1837,16 @@ namespace MarketApp.Infrastructure.Migrations
                         .HasForeignKey("InventoryLocationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("ManagerUserIdSnapshot")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("ReconciledByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
@@ -1361,6 +1867,11 @@ namespace MarketApp.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("PurchaseCostRecordedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("MarketApp.Domain.Entity.Sales.SalesInvoice", "SalesInvoice")
                         .WithMany("Lines")
                         .HasForeignKey("SalesInvoiceId")
@@ -1370,6 +1881,75 @@ namespace MarketApp.Infrastructure.Migrations
                     b.Navigation("Product");
 
                     b.Navigation("SalesInvoice");
+                });
+
+            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesReturn", b =>
+                {
+                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarketApp.Domain.Entity.Sales.SalesInvoice", "SalesInvoice")
+                        .WithMany()
+                        .HasForeignKey("SalesInvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("SalesInvoice");
+                });
+
+            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesReturnLine", b =>
+                {
+                    b.HasOne("MarketApp.Domain.Entity.Sales.SalesInvoiceLine", "SalesInvoiceLine")
+                        .WithMany()
+                        .HasForeignKey("SalesInvoiceLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarketApp.Domain.Entity.Sales.SalesReturn", "SalesReturn")
+                        .WithMany("Lines")
+                        .HasForeignKey("SalesReturnId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SalesInvoiceLine");
+
+                    b.Navigation("SalesReturn");
+                });
+
+            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.StockAdjustment", b =>
+                {
+                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "InventoryLocation")
+                        .WithMany()
+                        .HasForeignKey("InventoryLocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("InventoryLocation");
+
+                    b.Navigation("Product");
                 });
 
             modelBuilder.Entity("MarketApp.Infrastructure.Identity.ApplicationUserBranch", b =>
@@ -1485,6 +2065,11 @@ namespace MarketApp.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesInvoice", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesReturn", b =>
                 {
                     b.Navigation("Lines");
                 });

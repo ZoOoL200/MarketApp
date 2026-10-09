@@ -15,8 +15,14 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
         : base(options)
     {
     }
+    public DbSet<MarketApp.Domain.Entity.Sales.SalesReturn> SalesReturns => Set<MarketApp.Domain.Entity.Sales.SalesReturn>();
+    public DbSet<MarketApp.Domain.Entity.Sales.SalesReturnLine> SalesReturnLines => Set<MarketApp.Domain.Entity.Sales.SalesReturnLine>();
+    public DbSet<MarketApp.Domain.Entity.Sales.StockAdjustment> StockAdjustments => Set<MarketApp.Domain.Entity.Sales.StockAdjustment>();
+    public DbSet<MarketApp.Domain.Entity.Sales.ManagerProfitShare> ManagerProfitShares => Set<MarketApp.Domain.Entity.Sales.ManagerProfitShare>();
     public DbSet<MarketApp.Domain.Entity.Sales.SalesInvoice> SalesInvoices => Set<MarketApp.Domain.Entity.Sales.SalesInvoice>();
     public DbSet<MarketApp.Domain.Entity.Sales.SalesInvoiceLine> SalesInvoiceLines => Set<MarketApp.Domain.Entity.Sales.SalesInvoiceLine>();
+    public DbSet<MarketApp.Domain.Entity.Inventory.StockCostHistory> StockCostHistories => Set<MarketApp.Domain.Entity.Inventory.StockCostHistory>();
+    public DbSet<MarketApp.Domain.Entity.Sales.BranchExpense> BranchExpenses => Set<MarketApp.Domain.Entity.Sales.BranchExpense>();
     // Add DbSet properties for your entities
     public DbSet<Category> Categories => Set<Category>();
 

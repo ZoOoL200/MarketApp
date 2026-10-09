@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using MarketApp.Application.Common.Security;
+using System.ComponentModel.DataAnnotations;
 using MarketApp.Application.Common.Results;
 using MarketApp.Application.DTOs.Users;
 using MarketApp.Application.Interfaces.Services;
@@ -206,6 +207,46 @@ public class UserManagementService : IUserManagementService
             user.CreatedAtUtc,
             roles.ToArray(),
             branchIds);
+    }
+
+    public async Task<MarketApp.Application.Common.PagedResult<UserDetailsDto>> GetPageAsync(int pageNumber, int pageSize, CancellationToken ct = default)
+    {
+        if (pageNumber < 1 || pageNumber > 1000000 || pageSize < 1 || pageSize > 100)
+            throw new MarketApp.Application.Common.Exceptions.RequestException(400, "Invalid page parameters.");
+        var count = await _context.Users.CountAsync(ct);
+        var ids = await _context.Users.AsNoTracking().OrderBy(u => u.UserName).ThenBy(u => u.Id)
+            .Skip((pageNumber - 1) * pageSize).Take(pageSize).Select(u => u.Id).ToListAsync(ct);
+        var items = new List<UserDetailsDto>();
+        foreach (var id in ids) if (await GetByIdAsync(id, ct) is { } dto) items.Add(dto);
+        return new(items, count, pageNumber, pageSize);
+    }
+
+    public async Task<UserDetailsDto> UpdateAccessAsync(Guid userId, Guid actorId, UpdateUserAccessDto request, CancellationToken ct = default)
+    {
+        if (request.BranchIds is null || request.BranchIds.Count > 100 || request.BranchIds.Contains(Guid.Empty))
+            throw new MarketApp.Application.Common.Exceptions.RequestException(400, "Invalid branch assignments.");
+        await using var tx = await _context.Database.BeginTransactionAsync(ct);
+        var user = await _context.Users.SingleOrDefaultAsync(u => u.Id == userId, ct)
+            ?? throw new MarketApp.Application.Common.Exceptions.RequestException(404, "User not found.");
+        if (user.Id == actorId || await _userManager.IsInRoleAsync(user, AppRoles.Stakeholder))
+            throw new MarketApp.Application.Common.Exceptions.RequestException(400, "This endpoint manages staff accounts only; it cannot alter stakeholder access.");
+        var ids = request.BranchIds.Distinct().ToArray();
+        if (request.IsActive && ids.Length == 0)
+            throw new MarketApp.Application.Common.Exceptions.RequestException(400, "Active staff need at least one branch.");
+        if (await _context.Branches.CountAsync(b => ids.Contains(b.Id) && b.IsActive, ct) != ids.Length)
+            throw new MarketApp.Application.Common.Exceptions.RequestException(400, "Every assigned branch must exist and be active.");
+        user.IsActive = request.IsActive;
+        var old = await _context.UserBranchAssignments.Where(a => a.UserId == userId).ToListAsync(ct);
+        _context.UserBranchAssignments.RemoveRange(old.Where(a => !ids.Contains(a.BranchId)));
+        _context.UserBranchAssignments.AddRange(ids.Except(old.Select(a => a.BranchId))
+            .Select(id => new ApplicationUserBranch { UserId = userId, BranchId = id }));
+        // Invalidate access and refresh sessions together with the access change.
+        user.SecurityStamp = Guid.NewGuid().ToString();
+        var now = DateTime.UtcNow;
+        await _context.AuthSessions.Where(a => a.UserId == userId && a.RevokedAtUtc == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(a => a.RevokedAtUtc, now), ct);
+        await _context.SaveChangesAsync(ct); await tx.CommitAsync(ct);
+        return (await GetByIdAsync(userId, ct))!;
     }
 
     private static UserManagementResult FromIdentityFailure(

@@ -1,3 +1,5 @@
+using MarketApp.Api.Configuration;
+using MarketApp.Api.Documentation;
 using MarketApp.Api.ExceptionHandling;
 using MarketApp.Api.Middleware;
 using MarketApp.Application.Common.Security;
@@ -6,7 +8,6 @@ using MarketApp.Infrastructure.Extension;
 using MarketApp.Infrastructure.Identity;
 using MarketApp.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
-using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +15,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.ApplicationServices();
 builder.Services.AddMarketInfrastructure(builder.Configuration);
 builder.Services.AddControllers();
+builder.Services.AddMarketOpenApi();
+builder.Services.AddMarketOperations(builder.Configuration, builder.Environment);
 builder.Services.AddProblemDetails();
 
 builder.Services.AddExceptionHandler<DatabaseConflictHandler>();
@@ -35,33 +38,17 @@ builder.Services.AddAuthorization(options =>
     });
 });
 
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode =
-        StatusCodes.Status429TooManyRequests;
-
-    options.AddPolicy("PasswordRecovery", context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey:
-                context.Connection.RemoteIpAddress?.ToString()
-                ?? "unknown",
-            factory: _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 10,
-                Window = TimeSpan.FromMinutes(10),
-                QueueLimit = 0,
-                AutoReplenishment = true
-            }));
-});
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
+if (!app.Environment.IsDevelopment()) app.UseHsts();
 
 app.UseHttpsRedirection();
 
 app.UseRouting();
+app.UseCors("ManagerWeb");
 
 app.UseRateLimiter();
 
@@ -72,6 +59,8 @@ app.UseMiddleware<IdentitySessionMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapOpenApi().RequireAuthorization();
+app.MapMarketHealth();
 
 if (app.Environment.IsDevelopment())
 {

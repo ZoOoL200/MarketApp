@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using MarketApp.Application.Common.Results;
 using MarketApp.Application.Common.Security;
 using MarketApp.Application.DTOs.Pricing;
@@ -28,6 +28,7 @@ public class BranchProductPricesController : ControllerBase
     }
 
     [HttpGet("{productId:guid}")]
+    [ProducesResponseType(typeof(MarketApp.Application.DTOs.Pricing.BranchProductPriceDto), 200)]
     public async Task<IActionResult> Get(
         Guid branchId,
         Guid productId,
@@ -54,6 +55,7 @@ public class BranchProductPricesController : ControllerBase
 
     [Authorize(Roles = AppRoles.Stakeholder)]
     [HttpPut("{productId:guid}/baseline")]
+    [ProducesResponseType(typeof(MarketApp.Application.DTOs.Pricing.BranchProductPriceDto), 200)]
     public async Task<IActionResult> SetBaseline(
         Guid branchId,
         Guid productId,
@@ -84,6 +86,7 @@ public class BranchProductPricesController : ControllerBase
     }
 
     [HttpPut("{productId:guid}/minimum-selling-price")]
+    [ProducesResponseType(typeof(MarketApp.Application.DTOs.Pricing.BranchProductPriceDto), 200)]
     public async Task<IActionResult> SetMinimumSellingPrice(
         Guid branchId,
         Guid productId,
@@ -114,6 +117,7 @@ public class BranchProductPricesController : ControllerBase
     }
 
     [HttpGet("{productId:guid}/history")]
+    [ProducesResponseType(typeof(MarketApp.Application.Common.PagedResult<MarketApp.Application.DTOs.Pricing.BranchProductPriceHistoryDto>), 200)]
     public async Task<IActionResult> GetHistory(
         Guid branchId,
         Guid productId,

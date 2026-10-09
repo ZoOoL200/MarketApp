@@ -16,6 +16,7 @@ namespace MarketApp.Api.Controllers;
 public class ProductPhotosController(IProductPhotoService photoService) : ControllerBase
 {
     [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<MarketApp.Application.DTOs.Products.ProductPhotoDto>), 200)]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> GetList(Guid productId, CancellationToken cancellationToken)
     {
@@ -38,6 +39,7 @@ public class ProductPhotosController(IProductPhotoService photoService) : Contro
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(MarketApp.Application.DTOs.Products.ProductPhotoDto), 201)]
     [Authorize(Roles = AppRoles.Stakeholder)]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(ProductPhotoLimits.MaximumRequestBytes)]
@@ -64,6 +66,7 @@ public class ProductPhotosController(IProductPhotoService photoService) : Contro
     }
 
     [HttpPut("{photoId:guid}/order")]
+    [ProducesResponseType(204)]
     [Authorize(Roles = AppRoles.Stakeholder)]
     public async Task<IActionResult> SetOrder(Guid productId, Guid photoId,
         [FromBody] UpdateProductPhotoOrderRequest request, CancellationToken cancellationToken)
@@ -73,6 +76,7 @@ public class ProductPhotosController(IProductPhotoService photoService) : Contro
     }
 
     [HttpDelete("{photoId:guid}")]
+    [ProducesResponseType(204)]
     [Authorize(Roles = AppRoles.Stakeholder)]
     public async Task<IActionResult> Delete(Guid productId, Guid photoId, CancellationToken cancellationToken)
     {

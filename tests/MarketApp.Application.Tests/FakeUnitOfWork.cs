@@ -12,6 +12,8 @@ namespace MarketApp.Application.Tests;
 internal sealed class FakeUnitOfWork : IUnitOfWork
 {
     private readonly Dictionary<Type, object> _repositories = [];
+    public IGeneralRepository<MarketApp.Domain.Entity.Inventory.StockCostHistory> StockCostHistories => Repo<MarketApp.Domain.Entity.Inventory.StockCostHistory>();
+    public IGeneralRepository<MarketApp.Domain.Entity.Sales.BranchExpense> BranchExpenses => Repo<MarketApp.Domain.Entity.Sales.BranchExpense>();
     public int SaveCount { get; private set; }
 
     public FakeRepository<T> Repo<T>() where T : class
@@ -36,6 +38,9 @@ internal sealed class FakeUnitOfWork : IUnitOfWork
     public IGeneralRepository<BranchProductPrice> BranchProductPrices => Repo<BranchProductPrice>();
     public IGeneralRepository<BranchProductPriceHistory> BranchProductPriceHistories => Repo<BranchProductPriceHistory>();
 
+    public IGeneralRepository<MarketApp.Domain.Entity.Sales.SalesReturn> SalesReturns => Repo<MarketApp.Domain.Entity.Sales.SalesReturn>();
+    public IGeneralRepository<MarketApp.Domain.Entity.Sales.StockAdjustment> StockAdjustments => Repo<MarketApp.Domain.Entity.Sales.StockAdjustment>();
+    public IGeneralRepository<MarketApp.Domain.Entity.Sales.ManagerProfitShare> ManagerProfitShares => Repo<MarketApp.Domain.Entity.Sales.ManagerProfitShare>();
     public IGeneralRepository<MarketApp.Domain.Entity.Sales.SalesInvoice> SalesInvoices => Repo<MarketApp.Domain.Entity.Sales.SalesInvoice>();
     public Task<IUnitOfWorkTransaction> BeginSerializableAsync(CancellationToken ct = default)
         => throw new NotSupportedException("Use integration tests for commerce transactions.");

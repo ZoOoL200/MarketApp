@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using MarketApp.Application.Common.Results;
 using MarketApp.Application.DTOs.StockTransfers;
 using MarketApp.Application.Interfaces.Services;
@@ -19,6 +19,13 @@ public class StockTransferService : IStockTransferService
     public StockTransferService(IUnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork;
+    }
+
+    public async Task<MarketApp.Application.Common.PagedResult<StockTransferDto>> GetPageAsync(MarketApp.Application.DTOs.Sales.PageQuery query, CancellationToken ct = default)
+    {
+        var page = await _unitOfWork.StockTransfers.GetPageAsync(query.PageNumber, query.PageSize,
+            q => q.OrderByDescending(i => i.CreatedAtUtc).ThenBy(i => i.Id), includes: [i => i.Lines], cancellationToken: ct);
+        return new(page.Items.Select(ToDto).ToList(), page.TotalCount, page.PageNumber, page.PageSize);
     }
 
     public async Task<StockTransferResult> CreateAsync(
@@ -273,9 +280,17 @@ public class StockTransferService : IStockTransferService
 
         foreach (var change in changes)
         {
-            change.Balance.Quantity += receiving
-                ? change.Quantity
-                : -change.Quantity;
+            var lines = transfer.Lines.Where(l => l.ProductId == change.Balance.ProductId).ToList();
+            if (receiving)
+                await StockCostAccounting.ReceiveAsync(_unitOfWork, change.Balance, change.Quantity,
+                    lines.Any(l => l.PurchaseUnitCostSnapshot is null) ? null
+                        : lines.Sum(l => l.Quantity * l.PurchaseUnitCostSnapshot!.Value) / change.Quantity,
+                    $"Transfer receipt {transfer.Number}", cancellationToken);
+            else
+            {
+                foreach (var line in lines) line.PurchaseUnitCostSnapshot = change.Balance.AveragePurchaseUnitCost;
+                change.Balance.Quantity -= change.Quantity;
+            }
 
             if (change.IsNew)
             {
@@ -759,7 +774,11 @@ public class StockTransferService : IStockTransferService
 
         foreach (var change in changes)
         {
-            change.Balance.Quantity += change.Quantity;
+            var lines = transfer.Lines.Where(l => l.ProductId == change.Balance.ProductId).ToList();
+            await StockCostAccounting.ReceiveAsync(_unitOfWork, change.Balance, change.Quantity,
+                lines.Any(l => l.PurchaseUnitCostSnapshot is null) ? null
+                    : lines.Sum(l => l.Quantity * l.PurchaseUnitCostSnapshot!.Value) / change.Quantity,
+                $"Transfer returned {transfer.Number}", cancellationToken);
 
             if (change.IsNew)
             {

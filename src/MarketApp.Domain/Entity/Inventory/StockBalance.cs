@@ -1,4 +1,4 @@
-﻿using MarketApp.Domain.Entity.Main;
+using MarketApp.Domain.Entity.Main;
 
 namespace MarketApp.Domain.Entity.Inventory;
 
@@ -15,6 +15,8 @@ public class StockBalance
 
     // navigational property for the InventoryLocation entity
     public InventoryLocation InventoryLocation { get; set; } = null!;
+
+    public decimal? AveragePurchaseUnitCost { get; set; }
 
     public decimal Quantity { get; set; }
 

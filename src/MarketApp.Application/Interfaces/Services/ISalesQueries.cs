@@ -8,4 +8,5 @@ public interface ISalesQueries
     Task<PagedResult<CatalogStockDto>> StockAsync(Guid branchId, Guid? locationId, PageQuery page, CancellationToken ct);
     Task<PagedResult<SaleDto>> SalesAsync(Guid branchId, Guid? sellerId, PageQuery page, CancellationToken ct);
     Task<SaleDto?> SaleAsync(Guid branchId, Guid saleId, Guid? sellerId, CancellationToken ct);
+    Task<bool> IsAssignedUserAsync(Guid branchId, Guid userId, string role, CancellationToken ct);
 }

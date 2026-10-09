@@ -6,6 +6,10 @@ namespace MarketApp.Domain.Entity.Inventory;
 
 public class StockMovement
 {
+    public Guid? SalesReturnLineId { get; set; }
+    public MarketApp.Domain.Entity.Sales.SalesReturnLine? SalesReturnLine { get; set; }
+    public Guid? StockAdjustmentId { get; set; }
+    public MarketApp.Domain.Entity.Sales.StockAdjustment? StockAdjustment { get; set; }
     public Guid? SalesInvoiceLineId { get; set; }
     public MarketApp.Domain.Entity.Sales.SalesInvoiceLine? SalesInvoiceLine { get; set; }
     public Guid Id { get; set; } = Guid.NewGuid();

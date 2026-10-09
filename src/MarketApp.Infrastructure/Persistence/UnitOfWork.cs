@@ -26,8 +26,14 @@ public class UnitOfWork : IUnitOfWork
     public IGeneralRepository<BranchProductPrice> BranchProductPrices{ get;}
     public IGeneralRepository<BranchProductPriceHistory> BranchProductPriceHistories{get;}
 
+    public IGeneralRepository<MarketApp.Domain.Entity.Inventory.StockCostHistory> StockCostHistories { get; }
+
+    public IGeneralRepository<MarketApp.Domain.Entity.Sales.BranchExpense> BranchExpenses { get; }
+
     public UnitOfWork(
         AppDbContext context,
+        IGeneralRepository<MarketApp.Domain.Entity.Sales.BranchExpense> branchExpenses,
+        IGeneralRepository<MarketApp.Domain.Entity.Inventory.StockCostHistory> stockCostHistories,
         IGeneralRepository<Category> categories,
         IGeneralRepository<Product> products,
         IGeneralRepository<Branch> branches,
@@ -39,9 +45,14 @@ public class UnitOfWork : IUnitOfWork
         IGeneralRepository<StockTransfer> stockTransfers,
         IGeneralRepository<BranchProductPrice> branchProductPrices,
         IGeneralRepository<BranchProductPriceHistory> branchProductPriceHistories,
+        IGeneralRepository<MarketApp.Domain.Entity.Sales.SalesReturn> salesReturns,
+        IGeneralRepository<MarketApp.Domain.Entity.Sales.StockAdjustment> stockAdjustments,
+        IGeneralRepository<MarketApp.Domain.Entity.Sales.ManagerProfitShare> managerProfitShares,
         IGeneralRepository<MarketApp.Domain.Entity.Sales.SalesInvoice> salesInvoices)
     {
         _context = context;
+        BranchExpenses = branchExpenses;
+        StockCostHistories = stockCostHistories;
         Categories = categories;
         Products = products;
         Branches = branches;
@@ -53,9 +64,15 @@ public class UnitOfWork : IUnitOfWork
         StockTransfers = stockTransfers;
         BranchProductPrices = branchProductPrices;
         BranchProductPriceHistories = branchProductPriceHistories;
+        SalesReturns = salesReturns;
+        StockAdjustments = stockAdjustments;
+        ManagerProfitShares = managerProfitShares;
         SalesInvoices = salesInvoices;
     }
 
+    public IGeneralRepository<MarketApp.Domain.Entity.Sales.SalesReturn> SalesReturns { get; }
+    public IGeneralRepository<MarketApp.Domain.Entity.Sales.StockAdjustment> StockAdjustments { get; }
+    public IGeneralRepository<MarketApp.Domain.Entity.Sales.ManagerProfitShare> ManagerProfitShares { get; }
     public IGeneralRepository<MarketApp.Domain.Entity.Sales.SalesInvoice> SalesInvoices { get; }
 
     public async Task<IUnitOfWorkTransaction> BeginSerializableAsync(CancellationToken ct = default)

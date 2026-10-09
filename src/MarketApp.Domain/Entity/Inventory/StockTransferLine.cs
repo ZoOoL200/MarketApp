@@ -1,9 +1,11 @@
-﻿using MarketApp.Domain.Entity.Main;
+using MarketApp.Domain.Entity.Main;
 
 namespace MarketApp.Domain.Entity.Inventory;
 
 public class StockTransferLine
 {
+    public decimal? PurchaseUnitCostSnapshot { get; set; }
+
     public Guid Id { get; set; } = Guid.NewGuid();
 
     public Guid StockTransferId { get; set; }

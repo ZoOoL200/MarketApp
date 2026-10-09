@@ -19,7 +19,12 @@ public interface IUnitOfWork
     IGeneralRepository<StockTransfer> StockTransfers { get; }
     IGeneralRepository<BranchProductPrice> BranchProductPrices { get; }
     IGeneralRepository<BranchProductPriceHistory>BranchProductPriceHistories { get; }
+    IGeneralRepository<MarketApp.Domain.Entity.Sales.SalesReturn> SalesReturns { get; }
+    IGeneralRepository<MarketApp.Domain.Entity.Sales.StockAdjustment> StockAdjustments { get; }
+    IGeneralRepository<MarketApp.Domain.Entity.Sales.ManagerProfitShare> ManagerProfitShares { get; }
     IGeneralRepository<MarketApp.Domain.Entity.Sales.SalesInvoice> SalesInvoices { get; }
+    IGeneralRepository<MarketApp.Domain.Entity.Inventory.StockCostHistory> StockCostHistories { get; }
+    IGeneralRepository<MarketApp.Domain.Entity.Sales.BranchExpense> BranchExpenses { get; }
     Task<IUnitOfWorkTransaction> BeginSerializableAsync(CancellationToken ct = default);
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);

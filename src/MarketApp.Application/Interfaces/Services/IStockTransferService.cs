@@ -5,6 +5,8 @@ namespace MarketApp.Application.Interfaces.Services;
 
 public interface IStockTransferService
 {
+    Task<MarketApp.Application.Common.PagedResult<StockTransferDto>> GetPageAsync(MarketApp.Application.DTOs.Sales.PageQuery page, CancellationToken ct = default);
+
     Task<StockTransferResult> CreateAsync(
         CreateStockTransferDto request,
         CancellationToken cancellationToken = default);

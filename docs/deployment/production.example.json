@@ -1,0 +1,11 @@
+{
+  "AllowedHosts": "api.example.com",
+  "ConnectionStrings": { "MarketDatabase": "SET_IN_HOST_SECRET_CONFIGURATION" },
+  "Jwt": { "Issuer": "MarketApp", "Audience": "MarketApp", "SigningKeyBase64": "SET_A_RANDOM_BASE64_KEY_IN_HOST_SECRET_CONFIGURATION", "AccessTokenMinutes": 30 },
+  "Email": { "Provider": "Smtp", "Host": "smtp.example.com", "Port": 587, "From": "market@example.com", "UserName": "SET_IN_HOST_SECRET_CONFIGURATION", "Password": "SET_IN_HOST_SECRET_CONFIGURATION" },
+  "DataProtection": { "KeysPath": "C:\\MarketAppData\\keys" },
+  "PhotoStorage": { "Provider": "Local", "LocalRoot": "C:\\MarketAppData\\photos" },
+  "Cors": { "AllowedOrigins": ["https://manager.example.com"] },
+  "ReverseProxy": { "KnownProxies": ["127.0.0.1", "::1"] },
+  "Logging": { "LogLevel": { "Default": "Information", "Microsoft.AspNetCore": "Warning" } }
+}

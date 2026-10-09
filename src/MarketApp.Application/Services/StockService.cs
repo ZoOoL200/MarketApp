@@ -98,7 +98,7 @@ public class StockService : IStockService
                 m.PurchaseInvoiceLine?.PurchaseInvoiceId,
                 m.PurchaseInvoiceLineId,
                 m.StockTransferLine?.StockTransferId,
-                m.StockTransferLineId) { SalesInvoiceLineId = m.SalesInvoiceLineId })
+                m.StockTransferLineId) { SalesInvoiceLineId = m.SalesInvoiceLineId, SalesReturnLineId = m.SalesReturnLineId, StockAdjustmentId = m.StockAdjustmentId })
             .ToList();
 
         return new PagedResult<StockMovementDto>(

@@ -1,0 +1,79 @@
+# Use MarketApp_Test. Send requests individually. Keep IDs unchanged for exact retries.
+@baseUrl = https://localhost:7126
+@stakeholderToken = REPLACE_STAKEHOLDER_TOKEN
+@managerToken = REPLACE_MANAGER_TOKEN
+@sellerToken = REPLACE_SELLER_TOKEN
+@branchId = REPLACE_BRANCH_ID
+@managerUserId = REPLACE_MANAGER_USER_ID
+@sellerUserId = REPLACE_TEST_SELLER_ID
+# Enter the agreed percentage; no default is assumed.
+@sharePercent = REPLACE_WITH_YOUR_PERCENTAGE
+@fromUtc = REPLACE_START_UTC_Z
+@toUtc = REPLACE_END_UTC_Z
+
+### 1. Set the branch manager agreement. Expected 200. Exact repeat is the same record.
+# Use a NEW clientChangeId whenever changing the percentage/manager/reason.
+POST {{baseUrl}}/api/branches/{{branchId}}/manager-profit-shares
+Authorization: Bearer {{stakeholderToken}}
+Content-Type: application/json
+
+{
+  "clientChangeId": "b3000000-0000-4000-8000-000000000001",
+  "managerUserId": "{{managerUserId}}",
+  "percent": {{sharePercent}},
+  "reason": "Agreed branch manager profit share"
+}
+
+### 2. Agreement history (stakeholder only).
+GET {{baseUrl}}/api/branches/{{branchId}}/manager-profit-shares?pageNumber=1&pageSize=25
+Authorization: Bearer {{stakeholderToken}}
+
+### 3. First create a NEW sale in Sales.http using a NEW clientSaleId, then run this report.
+# Existing pre-agreement sales do not earn shares retroactively.
+GET {{baseUrl}}/api/branches/{{branchId}}/reports/profit?fromUtc={{fromUtc}}&toUtc={{toUtc}}
+Authorization: Bearer {{stakeholderToken}}
+
+### 4. Same branch totals; managerEarnings restricted to this manager.
+GET {{baseUrl}}/api/branches/{{branchId}}/reports/profit?fromUtc={{fromUtc}}&toUtc={{toUtc}}
+Authorization: Bearer {{managerToken}}
+
+### 5. Paged staff list. Contains no password hashes or refresh tokens.
+GET {{baseUrl}}/api/users?pageNumber=1&pageSize=25
+Authorization: Bearer {{stakeholderToken}}
+
+### 6. Disable a TEST seller. Existing JWT must fail after this request (401).
+PUT {{baseUrl}}/api/users/{{sellerUserId}}/access
+Authorization: Bearer {{stakeholderToken}}
+Content-Type: application/json
+
+{ "isActive": false, "branchIds": [] }
+
+### 7. Confirm the old token is rejected.
+GET {{baseUrl}}/api/branches/{{branchId}}/catalog
+Authorization: Bearer {{sellerToken}}
+
+### 8. Reactivate and assign branch. Seller must log in again to obtain fresh tokens.
+PUT {{baseUrl}}/api/users/{{sellerUserId}}/access
+Authorization: Bearer {{stakeholderToken}}
+Content-Type: application/json
+
+{ "isActive": true, "branchIds": ["{{branchId}}"] }
+
+### 9. Purchase history.
+GET {{baseUrl}}/api/purchase-invoices?pageNumber=1&pageSize=25
+Authorization: Bearer {{stakeholderToken}}
+
+### 10. Transfer history.
+GET {{baseUrl}}/api/stock-transfers?pageNumber=1&pageSize=25
+Authorization: Bearer {{stakeholderToken}}
+
+### 11. Live API specification. Import its JSON into an API client if desired.
+GET {{baseUrl}}/openapi/v1.json
+Authorization: Bearer {{stakeholderToken}}
+
+### 12. Liveness.
+GET {{baseUrl}}/health/live
+
+### 13. Database connectivity (stakeholder).
+GET {{baseUrl}}/health/ready
+Authorization: Bearer {{stakeholderToken}}

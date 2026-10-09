@@ -1,4 +1,4 @@
-﻿using MarketApp.Application.Common.Result;
+using MarketApp.Application.Common.Result;
 using MarketApp.Application.DTOs.Categories;
 using MarketApp.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -78,6 +78,7 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [ProducesResponseType(204)]
     public async Task<IActionResult> Delete(
         Guid id,
         CancellationToken cancellationToken)

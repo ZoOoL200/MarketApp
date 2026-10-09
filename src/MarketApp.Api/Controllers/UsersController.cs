@@ -1,4 +1,4 @@
-﻿using MarketApp.Application.Common.Results;
+using MarketApp.Application.Common.Results;
 using MarketApp.Application.Common.Security;
 using MarketApp.Application.DTOs.Users;
 using MarketApp.Application.Interfaces.Services;
@@ -21,7 +21,19 @@ public class UsersController : ControllerBase
         _userManagementService = userManagementService;
     }
 
+    [HttpGet]
+    [ProducesResponseType(typeof(MarketApp.Application.Common.PagedResult<MarketApp.Application.DTOs.Users.UserDetailsDto>), 200)]
+    public async Task<IActionResult> List([FromQuery] MarketApp.Application.DTOs.Sales.PageQuery page, CancellationToken ct)
+        => Ok(await _userManagementService.GetPageAsync(page.PageNumber, page.PageSize, ct));
+
+    [HttpPut("{id:guid}/access")]
+    [ProducesResponseType(typeof(MarketApp.Application.DTOs.Users.UserDetailsDto), 200)]
+    public async Task<IActionResult> UpdateAccess(Guid id, UpdateUserAccessDto request, CancellationToken ct)
+        => Ok(await _userManagementService.UpdateAccessAsync(id,
+            Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value), request, ct));
+
     [HttpPost]
+    [ProducesResponseType(typeof(MarketApp.Application.DTOs.Users.UserDetailsDto), 201)]
     public async Task<IActionResult> Create(
         [FromBody] CreateUserRequestDto request,
         CancellationToken cancellationToken)
@@ -58,6 +70,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(MarketApp.Application.DTOs.Users.UserDetailsDto), 200)]
     public async Task<IActionResult> GetById(
         Guid id,
         CancellationToken cancellationToken)

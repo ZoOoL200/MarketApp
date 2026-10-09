@@ -1,4 +1,4 @@
-﻿using MarketApp.Application.Common.Security;
+using MarketApp.Application.Common.Security;
 using MarketApp.Application.DTOs.Authentication;
 using MarketApp.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -31,7 +31,9 @@ public class AuthController : ControllerBase
     }
 
     [AllowAnonymous]
+    [EnableRateLimiting("Authentication")]
     [HttpPost("login")]
+    [ProducesResponseType(typeof(AuthResponseDto), 200)]
     public async Task<IActionResult> Login(
         [FromBody] LoginRequestDto request,
         CancellationToken cancellationToken)
@@ -57,7 +59,9 @@ public class AuthController : ControllerBase
     }
 
     [AllowAnonymous]
+    [EnableRateLimiting("Authentication")]
     [HttpPost("refresh")]
+    [ProducesResponseType(typeof(AuthResponseDto), 200)]
     public async Task<IActionResult> Refresh(
         [FromBody] RefreshRequestDto request,
         CancellationToken cancellationToken)
@@ -76,6 +80,7 @@ public class AuthController : ControllerBase
 
     [Authorize(Policy = "AuthenticatedUser")]
     [HttpPost("logout")]
+    [ProducesResponseType(204)]
     public async Task<IActionResult> Logout(
         CancellationToken cancellationToken)
     {
@@ -88,6 +93,7 @@ public class AuthController : ControllerBase
 
     [Authorize(Policy = "AuthenticatedUser")]
     [HttpGet("me")]
+    [ProducesResponseType(typeof(MarketApp.Api.Models.CurrentUserResponse), 200)]
     public IActionResult Me()
     {
         return Ok(new
@@ -111,7 +117,9 @@ public class AuthController : ControllerBase
     }
 
     [Authorize(Policy = "AuthenticatedUser")]
+    [EnableRateLimiting("PasswordRecovery")]
     [HttpPost("request-email-verification")]
+    [ProducesResponseType(typeof(MarketApp.Api.Models.MessageResponse), 200)]
     public async Task<IActionResult> RequestEmailVerification(
     CancellationToken cancellationToken)
     {
@@ -134,7 +142,9 @@ public class AuthController : ControllerBase
     }
 
     [AllowAnonymous]
+    [EnableRateLimiting("Authentication")]
     [HttpPost("confirm-email")]
+    [ProducesResponseType(204)]
     public async Task<IActionResult> ConfirmEmail(
         [FromBody] ConfirmEmailRequestDto request)
     {
@@ -155,6 +165,7 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     [EnableRateLimiting("PasswordRecovery")]
     [HttpPost("forgot-password")]
+    [ProducesResponseType(typeof(MarketApp.Api.Models.MessageResponse), 200)]
     public async Task<IActionResult> ForgotPassword(
     [FromBody] ForgotPasswordRequestDto request,
     CancellationToken cancellationToken)
@@ -173,6 +184,7 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     [EnableRateLimiting("PasswordRecovery")]
     [HttpPost("reset-password")]
+    [ProducesResponseType(204)]
     public async Task<IActionResult> ResetPassword(
         [FromBody] ResetPasswordRequestDto request)
     {

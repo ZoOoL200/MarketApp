@@ -46,6 +46,25 @@ public sealed class SalesController(ISalesService service, ISalesQueries queries
         var result = await service.SellAsync(branchId, Actor, request, ct);
         return result.AlreadyProcessed ? Ok(result.Sale) : CreatedAtAction(nameof(Get), new { branchId, saleId = result.Sale.Id }, result.Sale);
     }
+    [HttpPost("sales/sync")]
+    [ProducesResponseType(typeof(SaleDto), 201), ProducesResponseType(typeof(SaleDto), 200)]
+    public async Task<IActionResult> Sync(Guid branchId, SyncSaleDto submission, CancellationToken ct)
+    {
+        if (!await access.CanAccessAsync(User, branchId, ct)) return Forbid();
+        var result = await service.SyncAsync(branchId, Actor, submission, ct);
+        return result.AlreadyProcessed ? Ok(result.Sale) : CreatedAtAction(nameof(Get), new { branchId, saleId = result.Sale.Id }, result.Sale);
+    }
+    [HttpPost("sales/reconcile"), Authorize(Roles = AppRoles.Stakeholder)]
+    [ProducesResponseType(typeof(SaleDto), 201), ProducesResponseType(typeof(SaleDto), 200)]
+    public async Task<IActionResult> Reconcile(Guid branchId, ReconcileSaleDto request, CancellationToken ct)
+    {
+        if (!await access.CanAccessAsync(User, branchId, ct)) return Forbid();
+        if (!await queries.IsAssignedUserAsync(branchId, request.OriginalSellerUserId, AppRoles.Seller, ct) &&
+            !await queries.IsAssignedUserAsync(branchId, request.OriginalSellerUserId, AppRoles.BranchManager, ct))
+            return BadRequest(new ProblemDetails { Status = 400, Title = "Choose an active seller or manager assigned to this branch." });
+        var result = await service.SyncAsync(branchId, request.OriginalSellerUserId, request.Submission, ct, Actor);
+        return result.AlreadyProcessed ? Ok(result.Sale) : CreatedAtAction(nameof(Get), new { branchId, saleId = result.Sale.Id }, result.Sale);
+    }
     [HttpGet("sales")]
     [ProducesResponseType(typeof(PagedResult<SaleDto>), 200)]
     public async Task<IActionResult> List(Guid branchId, [FromQuery] PageQuery page, CancellationToken ct)

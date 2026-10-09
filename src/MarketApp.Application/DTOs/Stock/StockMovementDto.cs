@@ -16,4 +16,6 @@ public record StockMovementDto(
     Guid? StockTransferLineId)
 {
     public Guid? SalesInvoiceLineId { get; init; }
+    public Guid? SalesReturnLineId { get; init; }
+    public Guid? StockAdjustmentId { get; init; }
 }

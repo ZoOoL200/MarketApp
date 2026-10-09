@@ -283,6 +283,20 @@ public sealed class PhotoWorkflowTests : IDisposable
         Assert.NotNull(await _storage.ReadAsync(fresh.StorageKey));
     }
 
+    [Fact]
+    public async Task Complex_image_is_compressed_to_150_KiB()
+    {
+        using var bitmap = new SKBitmap(1000, 1000);
+        var random = new Random(42);
+        for (var y = 0; y < bitmap.Height; y++)
+            for (var x = 0; x < bitmap.Width; x++)
+                bitmap.SetPixel(x, y, new SKColor((byte)random.Next(256), (byte)random.Next(256), (byte)random.Next(256)));
+        using var image = SKImage.FromBitmap(bitmap);
+        using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
+        var photo = await UploadOk(encoded.ToArray());
+        Assert.InRange(photo.FileSizeBytes, 1, 150 * 1024);
+    }
+
     public void Dispose()
     {
         _client.Dispose(); _host.Dispose(); _connection.Dispose();

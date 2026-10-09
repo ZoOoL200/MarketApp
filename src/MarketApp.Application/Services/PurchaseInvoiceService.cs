@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using MarketApp.Application.Common.Results;
 using MarketApp.Application.DTOs.Purchases;
 using MarketApp.Application.Interfaces.Services;
@@ -19,6 +19,13 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
     public PurchaseInvoiceService(IUnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork;
+    }
+
+    public async Task<MarketApp.Application.Common.PagedResult<PurchaseInvoiceDto>> GetPageAsync(MarketApp.Application.DTOs.Sales.PageQuery query, CancellationToken ct = default)
+    {
+        var page = await _unitOfWork.PurchaseInvoices.GetPageAsync(query.PageNumber, query.PageSize,
+            q => q.OrderByDescending(i => i.CreatedAtUtc).ThenBy(i => i.Id), includes: [i => i.Lines], cancellationToken: ct);
+        return new(page.Items.Select(ToDto).ToList(), page.TotalCount, page.PageNumber, page.PageSize);
     }
 
     public async Task<PurchaseInvoiceResult> CreateAsync(
@@ -176,17 +183,16 @@ public class PurchaseInvoiceService : IPurchaseInvoiceService
                 {
                     ProductId = productId,
                     InventoryLocationId = invoice.InventoryLocationId,
-                    Quantity = receivedQuantity
+                    Quantity = 0
                 };
 
                 await _unitOfWork.StockBalances.AddAsync(
                     balance,
                     cancellationToken);
             }
-            else
-            {
-                balance.Quantity += receivedQuantity;
-            }
+            await StockCostAccounting.ReceiveAsync(_unitOfWork, balance, receivedQuantity,
+                group.Sum(l => l.Quantity * l.UnitCost) / receivedQuantity,
+                $"Purchase receipt {invoice.Number}", cancellationToken);
         }
 
         var now = DateTime.UtcNow;
