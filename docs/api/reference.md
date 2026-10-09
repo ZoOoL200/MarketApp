@@ -1,8 +1,8 @@
 # API reference
 
-Generated from endpoint metadata after the profit-accounting update. `openapi.json` contains the full request/response schemas and can be imported into an API client. Set your HTTPS base URL; the exported server URL is relative (`/`). Live specification: `/openapi/v1.json`, stakeholder token required.
+Generated from endpoint metadata after the standalone stakeholder-expenses update. `openapi.json` contains the request/response schemas for API clients. Set your HTTPS base URL; the exported server URL is relative (`/`). Live specification: `/openapi/v1.json`, stakeholder token required.
 
-Read [usage-guide.md](usage-guide.md) for business rules and [the update guide](../profit-accounting-update.md) for installation and opening costs. Role checks also enforce branch assignments and active sessions. Common errors: 400 validation, 401 login required, 403 permission denied, 404 not found, 409 conflict, 429 rate limit, 500/503 server/dependency failure.
+Read [usage-guide.md](usage-guide.md), [the profit update](../profit-accounting-update.md), and [the standalone expense guide](../stakeholder-expenses-update.md). Role checks also enforce branch assignments and active sessions. Common failures: 400 validation, 401 login required, 403 permission denied, 404 not found, 409 conflict, 429 rate limit, 500/503 server/dependency failure.
 
 ## POST /api/auth/confirm-email
 
@@ -627,6 +627,53 @@ Read [usage-guide.md](usage-guide.md) for business rules and [the update guide](
 
 **Responses:** 200 → StakeholderProfitDto.
 
+## POST /api/stakeholder-expenses
+
+**Access:** Stakeholder only.
+
+**Body:** `application/json` → `CreateStakeholderExpenseDto`; `text/json` → `CreateStakeholderExpenseDto`; `application/*+json` → `CreateStakeholderExpenseDto`.
+
+**Responses:** 200 → StakeholderExpenseDto.
+
+## GET /api/stakeholder-expenses
+
+**Access:** Stakeholder only.
+
+| Parameter | Location | Type | Required |
+|---|---|---|---|
+| `PageNumber` | query | integer or string (int32) | No |
+| `PageSize` | query | integer or string (int32) | No |
+| `BranchId` | query | string (uuid) | No |
+| `Category` | query | string | No |
+| `FromUtc` | query | string (date-time) | No |
+| `ToUtc` | query | string (date-time) | No |
+| `Search` | query | string | No |
+| `IncludeVoided` | query | boolean | No |
+
+**Responses:** 200 → StakeholderExpensePageDto.
+
+## GET /api/stakeholder-expenses/{expenseId}
+
+**Access:** Stakeholder only.
+
+| Parameter | Location | Type | Required |
+|---|---|---|---|
+| `expenseId` | path | string (uuid) | Yes |
+
+**Responses:** 200 → StakeholderExpenseDto.
+
+## POST /api/stakeholder-expenses/{expenseId}/void
+
+**Access:** Stakeholder only.
+
+| Parameter | Location | Type | Required |
+|---|---|---|---|
+| `expenseId` | path | string (uuid) | Yes |
+
+**Body:** `application/json` → `VoidStakeholderExpenseDto`; `text/json` → `VoidStakeholderExpenseDto`; `application/*+json` → `VoidStakeholderExpenseDto`.
+
+**Responses:** 200 → StakeholderExpenseDto.
+
 ## POST /api/stock-adjustments
 
 **Access:** Stakeholder only.
@@ -872,7 +919,7 @@ Read [usage-guide.md](usage-guide.md) for business rules and [the update guide](
 
 **Responses:** 200 → HealthResponse.
 
-The specification covers 82 operations across 63 paths. Development-only debug routes are omitted from the exported specification.
+The specification covers 86 operations across 66 paths. Development-only debug routes are omitted from the exported specification.
 
 # Request and response schemas
 
@@ -1077,6 +1124,19 @@ The specification covers 82 operations across 63 paths. Development-only debug r
 | `quantity` | number or string (double) | No | minimum: 0.001; maximum: 1000000; pattern: ^-?(?:0\|[1-9]\d*)(?:\.\d+)?$ |
 | `sellingUnitPrice` | number or string (double) | No | minimum: 0; maximum: 1000000000; pattern: ^-?(?:0\|[1-9]\d*)(?:\.\d+)?$ |
 | `priceRevision` | integer or string (int32) | No | minimum: 1; maximum: 2147483647; pattern: ^-?(?:0\|[1-9]\d*)$ |
+
+## CreateStakeholderExpenseDto
+
+| Field | Type | Required | Constraints |
+|---|---|---|---|
+| `clientExpenseId` | string (uuid) | No | — |
+| `branchId` | null or string (uuid) | No | — |
+| `category` | string | Yes | pattern: ^(Rent\|Other)$ |
+| `amount` | number or string (double) | No | minimum: 0.0001; maximum: 1000000000000; pattern: ^-?(?:0\|[1-9]\d*)(?:\.\d+)?$ |
+| `occurredAtUtc` | string (date-time) | No | — |
+| `description` | string | Yes | minLength: 3; maxLength: 1000 |
+| `paidTo` | null or string | No | minLength: 0; maxLength: 200 |
+| `referenceNumber` | null or string | No | minLength: 0; maxLength: 100 |
 
 ## CreateStockTransferDto
 
@@ -1637,6 +1697,39 @@ Type: string (binary).
 | `grossProfit` | null or number or string (double) | Yes | pattern: ^-?(?:0\|[1-9]\d*)(?:\.\d+)?$ |
 | `missingCostEntries` | integer or string (int32) | Yes | pattern: ^-?(?:0\|[1-9]\d*)$ |
 
+## StakeholderExpenseDto
+
+| Field | Type | Required | Constraints |
+|---|---|---|---|
+| `id` | string (uuid) | Yes | — |
+| `clientExpenseId` | string (uuid) | Yes | — |
+| `branchId` | null or string (uuid) | Yes | — |
+| `branchName` | null or string | Yes | — |
+| `category` | string | Yes | — |
+| `amount` | number or string (double) | Yes | pattern: ^-?(?:0\|[1-9]\d*)(?:\.\d+)?$ |
+| `occurredAtUtc` | string (date-time) | Yes | — |
+| `description` | string | Yes | — |
+| `paidTo` | null or string | Yes | — |
+| `referenceNumber` | null or string | Yes | — |
+| `createdByUserId` | string (uuid) | Yes | — |
+| `createdAtUtc` | string (date-time) | Yes | — |
+| `voidedByUserId` | null or string (uuid) | Yes | — |
+| `voidedAtUtc` | null or string (date-time) | Yes | — |
+| `voidReason` | null or string | Yes | — |
+
+## StakeholderExpensePageDto
+
+| Field | Type | Required | Constraints |
+|---|---|---|---|
+| `activeAmount` | number or string (double) | Yes | pattern: ^-?(?:0\|[1-9]\d*)(?:\.\d+)?$ |
+| `items` | array of StakeholderExpenseDto | Yes | — |
+| `totalCount` | integer or string (int32) | Yes | pattern: ^-?(?:0\|[1-9]\d*)$ |
+| `pageNumber` | integer or string (int32) | Yes | pattern: ^-?(?:0\|[1-9]\d*)$ |
+| `pageSize` | integer or string (int32) | Yes | pattern: ^-?(?:0\|[1-9]\d*)$ |
+| `totalPages` | integer or string (int32) | No | pattern: ^-?(?:0\|[1-9]\d*)$ |
+| `hasPreviousPage` | boolean | No | — |
+| `hasNextPage` | boolean | No | — |
+
 ## StakeholderProfitDto
 
 | Field | Type | Required | Constraints |
@@ -1778,6 +1871,12 @@ Type: string (binary).
 | `branchIds` | array of string (uuid) | Yes | — |
 
 ## VoidExpenseDto
+
+| Field | Type | Required | Constraints |
+|---|---|---|---|
+| `reason` | string | Yes | minLength: 3; maxLength: 1000 |
+
+## VoidStakeholderExpenseDto
 
 | Field | Type | Required | Constraints |
 |---|---|---|---|

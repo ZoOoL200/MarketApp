@@ -119,6 +119,7 @@ public static class ServiceCollectionsExtension
         services.AddScoped<IBranchAccessService, BranchAccessService>();
 
         services.AddScoped<ISalesQueries, MarketApp.Infrastructure.Services.SalesQueries>();
+        services.AddScoped<IStakeholderExpenseQueries, MarketApp.Infrastructure.Services.StakeholderExpenseQueries>();
         services.AddScoped<IAccountingQueries, MarketApp.Infrastructure.Services.AccountingQueries>();
         services.AddScoped<IInventoryOperationsQueries, MarketApp.Infrastructure.Services.InventoryOperationsQueries>();
         services.AddProductPhotos(configuration);

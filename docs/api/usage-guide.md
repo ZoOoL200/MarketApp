@@ -194,6 +194,14 @@ Assigned managers and the stakeholder use `POST /api/branches/{branchId}/expense
 
 `GET .../expenses` lists expenses including voided records. Identical create retries return the same entry; reused identifiers with different data return 409. To correct a mistaken entry, `POST .../expenses/{expenseId}/void` with a reason, then create its replacement with a new identifier. Voiding preserves the record, actor, timestamp, and reason; it removes the expense from its original reporting period. This corrects historical reports rather than creating a current-period refund. Sellers cannot create, view, or void expenses.
 
+### Standalone stakeholder expenses
+
+Stakeholder-paid rent and other spending are recorded in the separate `StakeholderExpenses` table through `POST /api/stakeholder-expenses`. Only stakeholders can create/read/void these entries. Category is `Rent` or `Other`; record amount, UTC expense date and description, with optional branch/payee/reference. The branch reference is descriptive and does not charge its manager.
+
+**This register has no effect on either profit report.** Seller salaries remain in branch expenses and keep their existing branch-net-profit deduction. New Rent entries in branch expenses are rejected even if you previously added that category locally. Existing records are preserved; [the update guide](../stakeholder-expenses-update.md) explains how to correct rent already entered as a branch expense.
+
+`GET /api/stakeholder-expenses` provides pagination and optional branch/category/date/search filters. `activeAmount` totals matching non-voided expenses across all pages, independently of profit. Voids are hidden unless `includeVoided=true`; their amounts never contribute. `GET /api/stakeholder-expenses/{expenseId}` reads one entry. `POST /api/stakeholder-expenses/{expenseId}/void` requires a reason and preserves audit history. Exact retries are idempotent. To correct a record, void and create a replacement using a new client identifier. No payment is executed by recording an expense.
+
 ## 9. Product photos
 
 Stakeholder uploads multipart form data to `POST /api/products/{productId}/photos`; field `file` contains the image and `sortOrder` controls ordering. Upload limit is 5 MiB (request limit 6 MiB), decoded pixel limit 20 million, normalized display longest dimension 1600 pixels. New photos are WebP, stripped of source metadata, and compressed to at most 150 KiB; dimensions/quality can decrease to fit. Existing photos are preserved until replaced.

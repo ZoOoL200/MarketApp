@@ -23,6 +23,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<MarketApp.Domain.Entity.Sales.SalesInvoiceLine> SalesInvoiceLines => Set<MarketApp.Domain.Entity.Sales.SalesInvoiceLine>();
     public DbSet<MarketApp.Domain.Entity.Inventory.StockCostHistory> StockCostHistories => Set<MarketApp.Domain.Entity.Inventory.StockCostHistory>();
     public DbSet<MarketApp.Domain.Entity.Sales.BranchExpense> BranchExpenses => Set<MarketApp.Domain.Entity.Sales.BranchExpense>();
+    public DbSet<MarketApp.Domain.Entity.Accounting.StakeholderExpense> StakeholderExpenses => Set<MarketApp.Domain.Entity.Accounting.StakeholderExpense>();
     // Add DbSet properties for your entities
     public DbSet<Category> Categories => Set<Category>();
 

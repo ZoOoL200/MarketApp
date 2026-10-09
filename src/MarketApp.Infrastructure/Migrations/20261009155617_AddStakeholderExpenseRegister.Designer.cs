@@ -3,6 +3,7 @@ using System;
 using MarketApp.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MarketApp.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261009155617_AddStakeholderExpenseRegister")]
+    partial class AddStakeholderExpenseRegister
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -105,7 +108,7 @@ namespace MarketApp.Infrastructure.Migrations
 
                             t.HasCheckConstraint("CK_StakeholderExpenses_Category", "\"Category\" IN ('Rent', 'Other')");
 
-                            t.HasCheckConstraint("CK_StakeholderExpenses_Void", "(\"VoidedAtUtc\" IS NULL AND \"VoidedByUserId\" IS NULL AND \"VoidReason\" IS NULL) OR\r\n(\"VoidedAtUtc\" IS NOT NULL AND \"VoidedByUserId\" IS NOT NULL AND \"VoidReason\" IS NOT NULL)");
+                            t.HasCheckConstraint("CK_StakeholderExpenses_Void", "(\"VoidedAtUtc\" IS NULL AND \"VoidedByUserId\" IS NULL AND \"VoidReason\" IS NULL) OR\n(\"VoidedAtUtc\" IS NOT NULL AND \"VoidedByUserId\" IS NOT NULL AND \"VoidReason\" IS NOT NULL)");
                         });
                 });
 
@@ -275,7 +278,7 @@ namespace MarketApp.Infrastructure.Migrations
 
                     b.ToTable("StockMovements", null, t =>
                         {
-                            t.HasCheckConstraint("CK_StockMovements_Source", "num_nonnulls(\"PurchaseInvoiceLineId\", \"StockTransferLineId\", \"SalesInvoiceLineId\", \"SalesReturnLineId\", \"StockAdjustmentId\") = 1 AND (\r\n(\"MovementType\" = 1 AND \"PurchaseInvoiceLineId\" IS NOT NULL)\r\nOR (\"MovementType\" IN (2, 3, 4) AND \"StockTransferLineId\" IS NOT NULL)\r\nOR (\"MovementType\" = 5 AND \"SalesInvoiceLineId\" IS NOT NULL)\r\nOR (\"MovementType\" = 6 AND \"SalesReturnLineId\" IS NOT NULL)\r\nOR (\"MovementType\" = 7 AND \"StockAdjustmentId\" IS NOT NULL))");
+                            t.HasCheckConstraint("CK_StockMovements_Source", "num_nonnulls(\"PurchaseInvoiceLineId\", \"StockTransferLineId\", \"SalesInvoiceLineId\", \"SalesReturnLineId\", \"StockAdjustmentId\") = 1 AND (\n(\"MovementType\" = 1 AND \"PurchaseInvoiceLineId\" IS NOT NULL)\nOR (\"MovementType\" IN (2, 3, 4) AND \"StockTransferLineId\" IS NOT NULL)\nOR (\"MovementType\" = 5 AND \"SalesInvoiceLineId\" IS NOT NULL)\nOR (\"MovementType\" = 6 AND \"SalesReturnLineId\" IS NOT NULL)\nOR (\"MovementType\" = 7 AND \"StockAdjustmentId\" IS NOT NULL))");
 
                             t.HasCheckConstraint("CK_StockMovements_TypeAndQuantity", "(\"MovementType\" IN (1, 3, 4, 6) AND \"QuantityChange\" > 0) OR (\"MovementType\" IN (2, 5) AND \"QuantityChange\" < 0) OR (\"MovementType\" = 7 AND \"QuantityChange\" <> 0)");
                         });
@@ -927,9 +930,9 @@ namespace MarketApp.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("CK_BranchExpense_Amount", "\"Amount\" > 0");
 
-                            t.HasCheckConstraint("CK_BranchExpense_Category", "\"Category\" IN ('Salary','Other')");
+                            t.HasCheckConstraint("CK_BranchExpense_Category", "\"Category\" IN ('Salary', 'Other')");
 
-                            t.HasCheckConstraint("CK_BranchExpense_Void", "(\"VoidedAtUtc\" IS NULL AND \"VoidedByUserId\" IS NULL AND \"VoidReason\" IS NULL) OR\r\n(\"VoidedAtUtc\" IS NOT NULL AND \"VoidedByUserId\" IS NOT NULL AND \"VoidReason\" IS NOT NULL)");
+                            t.HasCheckConstraint("CK_BranchExpense_Void", "(\"VoidedAtUtc\" IS NULL AND \"VoidedByUserId\" IS NULL AND \"VoidReason\" IS NULL) OR\n(\"VoidedAtUtc\" IS NOT NULL AND \"VoidedByUserId\" IS NOT NULL AND \"VoidReason\" IS NOT NULL)");
                         });
                 });
 
@@ -1060,9 +1063,9 @@ namespace MarketApp.Infrastructure.Migrations
 
                     b.ToTable("SalesInvoices", null, t =>
                         {
-                            t.HasCheckConstraint("CK_SalesInvoices_ManagerShare", "\"ManagerSharePercentSnapshot\" BETWEEN 0 AND 100 AND\r\n(\"ManagerUserIdSnapshot\" IS NOT NULL OR \"ManagerSharePercentSnapshot\" = 0)");
+                            t.HasCheckConstraint("CK_SalesInvoices_ManagerShare", "\"ManagerSharePercentSnapshot\" BETWEEN 0 AND 100 AND\n(\"ManagerUserIdSnapshot\" IS NOT NULL OR \"ManagerSharePercentSnapshot\" = 0)");
 
-                            t.HasCheckConstraint("CK_SalesInvoices_Reconciliation", "(\"ReconciledByUserId\" IS NULL AND \"ReconciledAtUtc\" IS NULL) OR\r\n(\"ReconciledByUserId\" IS NOT NULL AND \"ReconciledAtUtc\" IS NOT NULL AND \"IsOffline\")");
+                            t.HasCheckConstraint("CK_SalesInvoices_Reconciliation", "(\"ReconciledByUserId\" IS NULL AND \"ReconciledAtUtc\" IS NULL) OR\n(\"ReconciledByUserId\" IS NOT NULL AND \"ReconciledAtUtc\" IS NOT NULL AND \"IsOffline\")");
                         });
                 });
 

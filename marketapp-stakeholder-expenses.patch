@@ -1,0 +1,4016 @@
+diff --git a/README.md b/README.md
+index fd940bd..c68c8f4 100644
+--- a/README.md
++++ b/README.md
+@@ -1,6 +1,6 @@
+ # MarketApp API — Batch 1 sales
+ 
+-This project includes Batches 1–3 plus corrected sale-cost snapshots, stakeholder/branch profit reports, branch expenses, and accepted-return rules. Start with [the profit update](docs/profit-accounting-update.md) and [the current API usage guide](docs/api/usage-guide.md). Batch-specific documents describe their original delivery; percentage profit sharing and damaged returns described in earlier batches are superseded by this update.
++This project includes Batches 1–3 plus corrected sale-cost snapshots, stakeholder/branch profit reports, branch expenses, and accepted-return rules. Stakeholder rent and other spending now have a [standalone expense register](docs/stakeholder-expenses-update.md) with no profit deduction. Start with [the profit update](docs/profit-accounting-update.md) and [the current API usage guide](docs/api/usage-guide.md). Batch-specific documents describe their original delivery; percentage profit sharing and damaged returns described in earlier batches are superseded by this update.
+ 
+ Apply `marketapp-batch1-sales.patch` to your existing solution using the accompanying `Apply-Batch1.bat`. The script must be beside `MarketApp.sln`. It checks the patch before applying it and stops if your local files conflict. It does not migrate the database.
+ 
+diff --git a/docs/api/openapi.json b/docs/api/openapi.json
+index b4285f6..fb001d4 100644
+--- a/docs/api/openapi.json
++++ b/docs/api/openapi.json
+@@ -3314,6 +3314,260 @@
+         }
+       }
+     },
++    "/api/stakeholder-expenses": {
++      "post": {
++        "tags": [
++          "StakeholderExpenses"
++        ],
++        "requestBody": {
++          "content": {
++            "application/json": {
++              "schema": {
++                "$ref": "#/components/schemas/CreateStakeholderExpenseDto"
++              }
++            },
++            "text/json": {
++              "schema": {
++                "$ref": "#/components/schemas/CreateStakeholderExpenseDto"
++              }
++            },
++            "application/*+json": {
++              "schema": {
++                "$ref": "#/components/schemas/CreateStakeholderExpenseDto"
++              }
++            }
++          },
++          "required": true
++        },
++        "responses": {
++          "200": {
++            "description": "OK",
++            "content": {
++              "text/plain": {
++                "schema": {
++                  "$ref": "#/components/schemas/StakeholderExpenseDto"
++                }
++              },
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/StakeholderExpenseDto"
++                }
++              },
++              "text/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/StakeholderExpenseDto"
++                }
++              }
++            }
++          }
++        }
++      },
++      "get": {
++        "tags": [
++          "StakeholderExpenses"
++        ],
++        "parameters": [
++          {
++            "name": "PageNumber",
++            "in": "query",
++            "schema": {
++              "maximum": 1000000,
++              "minimum": 1,
++              "pattern": "^-?(?:0|[1-9]\\d*)$",
++              "type": [
++                "integer",
++                "string"
++              ],
++              "format": "int32"
++            }
++          },
++          {
++            "name": "PageSize",
++            "in": "query",
++            "schema": {
++              "maximum": 100,
++              "minimum": 1,
++              "pattern": "^-?(?:0|[1-9]\\d*)$",
++              "type": [
++                "integer",
++                "string"
++              ],
++              "format": "int32"
++            }
++          },
++          {
++            "name": "BranchId",
++            "in": "query",
++            "schema": {
++              "type": "string",
++              "format": "uuid"
++            }
++          },
++          {
++            "name": "Category",
++            "in": "query",
++            "schema": {
++              "pattern": "^(Rent|Other)$",
++              "type": "string"
++            }
++          },
++          {
++            "name": "FromUtc",
++            "in": "query",
++            "schema": {
++              "type": "string",
++              "format": "date-time"
++            }
++          },
++          {
++            "name": "ToUtc",
++            "in": "query",
++            "schema": {
++              "type": "string",
++              "format": "date-time"
++            }
++          },
++          {
++            "name": "Search",
++            "in": "query",
++            "schema": {
++              "maxLength": 200,
++              "minLength": 0,
++              "type": "string"
++            }
++          },
++          {
++            "name": "IncludeVoided",
++            "in": "query",
++            "schema": {
++              "type": "boolean"
++            }
++          }
++        ],
++        "responses": {
++          "200": {
++            "description": "OK",
++            "content": {
++              "text/plain": {
++                "schema": {
++                  "$ref": "#/components/schemas/StakeholderExpensePageDto"
++                }
++              },
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/StakeholderExpensePageDto"
++                }
++              },
++              "text/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/StakeholderExpensePageDto"
++                }
++              }
++            }
++          }
++        }
++      }
++    },
++    "/api/stakeholder-expenses/{expenseId}": {
++      "get": {
++        "tags": [
++          "StakeholderExpenses"
++        ],
++        "parameters": [
++          {
++            "name": "expenseId",
++            "in": "path",
++            "required": true,
++            "schema": {
++              "type": "string",
++              "format": "uuid"
++            }
++          }
++        ],
++        "responses": {
++          "200": {
++            "description": "OK",
++            "content": {
++              "text/plain": {
++                "schema": {
++                  "$ref": "#/components/schemas/StakeholderExpenseDto"
++                }
++              },
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/StakeholderExpenseDto"
++                }
++              },
++              "text/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/StakeholderExpenseDto"
++                }
++              }
++            }
++          }
++        }
++      }
++    },
++    "/api/stakeholder-expenses/{expenseId}/void": {
++      "post": {
++        "tags": [
++          "StakeholderExpenses"
++        ],
++        "parameters": [
++          {
++            "name": "expenseId",
++            "in": "path",
++            "required": true,
++            "schema": {
++              "type": "string",
++              "format": "uuid"
++            }
++          }
++        ],
++        "requestBody": {
++          "content": {
++            "application/json": {
++              "schema": {
++                "$ref": "#/components/schemas/VoidStakeholderExpenseDto"
++              }
++            },
++            "text/json": {
++              "schema": {
++                "$ref": "#/components/schemas/VoidStakeholderExpenseDto"
++              }
++            },
++            "application/*+json": {
++              "schema": {
++                "$ref": "#/components/schemas/VoidStakeholderExpenseDto"
++              }
++            }
++          },
++          "required": true
++        },
++        "responses": {
++          "200": {
++            "description": "OK",
++            "content": {
++              "text/plain": {
++                "schema": {
++                  "$ref": "#/components/schemas/StakeholderExpenseDto"
++                }
++              },
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/StakeholderExpenseDto"
++                }
++              },
++              "text/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/StakeholderExpenseDto"
++                }
++              }
++            }
++          }
++        }
++      }
++    },
+     "/api/stock-adjustments": {
+       "post": {
+         "tags": [
+@@ -5166,6 +5420,65 @@
+           }
+         }
+       },
++      "CreateStakeholderExpenseDto": {
++        "required": [
++          "category",
++          "description"
++        ],
++        "type": "object",
++        "properties": {
++          "clientExpenseId": {
++            "type": "string",
++            "format": "uuid"
++          },
++          "branchId": {
++            "type": [
++              "null",
++              "string"
++            ],
++            "format": "uuid"
++          },
++          "category": {
++            "pattern": "^(Rent|Other)$",
++            "type": "string"
++          },
++          "amount": {
++            "maximum": 1000000000000,
++            "minimum": 0.0001,
++            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
++            "type": [
++              "number",
++              "string"
++            ],
++            "format": "double"
++          },
++          "occurredAtUtc": {
++            "type": "string",
++            "format": "date-time"
++          },
++          "description": {
++            "maxLength": 1000,
++            "minLength": 3,
++            "type": "string"
++          },
++          "paidTo": {
++            "maxLength": 200,
++            "minLength": 0,
++            "type": [
++              "null",
++              "string"
++            ]
++          },
++          "referenceNumber": {
++            "maxLength": 100,
++            "minLength": 0,
++            "type": [
++              "null",
++              "string"
++            ]
++          }
++        }
++      },
+       "CreateStockTransferDto": {
+         "required": [
+           "lines"
+@@ -7477,6 +7790,171 @@
+           }
+         }
+       },
++      "StakeholderExpenseDto": {
++        "required": [
++          "id",
++          "clientExpenseId",
++          "branchId",
++          "branchName",
++          "category",
++          "amount",
++          "occurredAtUtc",
++          "description",
++          "paidTo",
++          "referenceNumber",
++          "createdByUserId",
++          "createdAtUtc",
++          "voidedByUserId",
++          "voidedAtUtc",
++          "voidReason"
++        ],
++        "type": "object",
++        "properties": {
++          "id": {
++            "type": "string",
++            "format": "uuid"
++          },
++          "clientExpenseId": {
++            "type": "string",
++            "format": "uuid"
++          },
++          "branchId": {
++            "type": [
++              "null",
++              "string"
++            ],
++            "format": "uuid"
++          },
++          "branchName": {
++            "type": [
++              "null",
++              "string"
++            ]
++          },
++          "category": {
++            "type": "string"
++          },
++          "amount": {
++            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
++            "type": [
++              "number",
++              "string"
++            ],
++            "format": "double"
++          },
++          "occurredAtUtc": {
++            "type": "string",
++            "format": "date-time"
++          },
++          "description": {
++            "type": "string"
++          },
++          "paidTo": {
++            "type": [
++              "null",
++              "string"
++            ]
++          },
++          "referenceNumber": {
++            "type": [
++              "null",
++              "string"
++            ]
++          },
++          "createdByUserId": {
++            "type": "string",
++            "format": "uuid"
++          },
++          "createdAtUtc": {
++            "type": "string",
++            "format": "date-time"
++          },
++          "voidedByUserId": {
++            "type": [
++              "null",
++              "string"
++            ],
++            "format": "uuid"
++          },
++          "voidedAtUtc": {
++            "type": [
++              "null",
++              "string"
++            ],
++            "format": "date-time"
++          },
++          "voidReason": {
++            "type": [
++              "null",
++              "string"
++            ]
++          }
++        }
++      },
++      "StakeholderExpensePageDto": {
++        "required": [
++          "activeAmount",
++          "items",
++          "totalCount",
++          "pageNumber",
++          "pageSize"
++        ],
++        "type": "object",
++        "properties": {
++          "activeAmount": {
++            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
++            "type": [
++              "number",
++              "string"
++            ],
++            "format": "double"
++          },
++          "items": {
++            "type": "array",
++            "items": {
++              "$ref": "#/components/schemas/StakeholderExpenseDto"
++            }
++          },
++          "totalCount": {
++            "pattern": "^-?(?:0|[1-9]\\d*)$",
++            "type": [
++              "integer",
++              "string"
++            ],
++            "format": "int32"
++          },
++          "pageNumber": {
++            "pattern": "^-?(?:0|[1-9]\\d*)$",
++            "type": [
++              "integer",
++              "string"
++            ],
++            "format": "int32"
++          },
++          "pageSize": {
++            "pattern": "^-?(?:0|[1-9]\\d*)$",
++            "type": [
++              "integer",
++              "string"
++            ],
++            "format": "int32"
++          },
++          "totalPages": {
++            "pattern": "^-?(?:0|[1-9]\\d*)$",
++            "type": [
++              "integer",
++              "string"
++            ],
++            "format": "int32"
++          },
++          "hasPreviousPage": {
++            "type": "boolean"
++          },
++          "hasNextPage": {
++            "type": "boolean"
++          }
++        }
++      },
+       "StakeholderProfitDto": {
+         "required": [
+           "fromUtc",
+@@ -8080,6 +8558,19 @@
+             "type": "string"
+           }
+         }
++      },
++      "VoidStakeholderExpenseDto": {
++        "required": [
++          "reason"
++        ],
++        "type": "object",
++        "properties": {
++          "reason": {
++            "maxLength": 1000,
++            "minLength": 3,
++            "type": "string"
++          }
++        }
+       }
+     },
+     "securitySchemes": {
+@@ -8141,6 +8632,9 @@
+     {
+       "name": "SellingPrices"
+     },
++    {
++      "name": "StakeholderExpenses"
++    },
+     {
+       "name": "StockAdjustments"
+     },
+diff --git a/docs/api/reference.md b/docs/api/reference.md
+index 0892200..b82a972 100644
+--- a/docs/api/reference.md
++++ b/docs/api/reference.md
+@@ -1,8 +1,8 @@
+ # API reference
+ 
+-Generated from endpoint metadata after the profit-accounting update. `openapi.json` contains the full request/response schemas and can be imported into an API client. Set your HTTPS base URL; the exported server URL is relative (`/`). Live specification: `/openapi/v1.json`, stakeholder token required.
++Generated from endpoint metadata after the standalone stakeholder-expenses update. `openapi.json` contains the request/response schemas for API clients. Set your HTTPS base URL; the exported server URL is relative (`/`). Live specification: `/openapi/v1.json`, stakeholder token required.
+ 
+-Read [usage-guide.md](usage-guide.md) for business rules and [the update guide](../profit-accounting-update.md) for installation and opening costs. Role checks also enforce branch assignments and active sessions. Common errors: 400 validation, 401 login required, 403 permission denied, 404 not found, 409 conflict, 429 rate limit, 500/503 server/dependency failure.
++Read [usage-guide.md](usage-guide.md), [the profit update](../profit-accounting-update.md), and [the standalone expense guide](../stakeholder-expenses-update.md). Role checks also enforce branch assignments and active sessions. Common failures: 400 validation, 401 login required, 403 permission denied, 404 not found, 409 conflict, 429 rate limit, 500/503 server/dependency failure.
+ 
+ ## POST /api/auth/confirm-email
+ 
+@@ -627,6 +627,53 @@ Read [usage-guide.md](usage-guide.md) for business rules and [the update guide](
+ 
+ **Responses:** 200 → StakeholderProfitDto.
+ 
++## POST /api/stakeholder-expenses
++
++**Access:** Stakeholder only.
++
++**Body:** `application/json` → `CreateStakeholderExpenseDto`; `text/json` → `CreateStakeholderExpenseDto`; `application/*+json` → `CreateStakeholderExpenseDto`.
++
++**Responses:** 200 → StakeholderExpenseDto.
++
++## GET /api/stakeholder-expenses
++
++**Access:** Stakeholder only.
++
++| Parameter | Location | Type | Required |
++|---|---|---|---|
++| `PageNumber` | query | integer or string (int32) | No |
++| `PageSize` | query | integer or string (int32) | No |
++| `BranchId` | query | string (uuid) | No |
++| `Category` | query | string | No |
++| `FromUtc` | query | string (date-time) | No |
++| `ToUtc` | query | string (date-time) | No |
++| `Search` | query | string | No |
++| `IncludeVoided` | query | boolean | No |
++
++**Responses:** 200 → StakeholderExpensePageDto.
++
++## GET /api/stakeholder-expenses/{expenseId}
++
++**Access:** Stakeholder only.
++
++| Parameter | Location | Type | Required |
++|---|---|---|---|
++| `expenseId` | path | string (uuid) | Yes |
++
++**Responses:** 200 → StakeholderExpenseDto.
++
++## POST /api/stakeholder-expenses/{expenseId}/void
++
++**Access:** Stakeholder only.
++
++| Parameter | Location | Type | Required |
++|---|---|---|---|
++| `expenseId` | path | string (uuid) | Yes |
++
++**Body:** `application/json` → `VoidStakeholderExpenseDto`; `text/json` → `VoidStakeholderExpenseDto`; `application/*+json` → `VoidStakeholderExpenseDto`.
++
++**Responses:** 200 → StakeholderExpenseDto.
++
+ ## POST /api/stock-adjustments
+ 
+ **Access:** Stakeholder only.
+@@ -872,7 +919,7 @@ Read [usage-guide.md](usage-guide.md) for business rules and [the update guide](
+ 
+ **Responses:** 200 → HealthResponse.
+ 
+-The specification covers 82 operations across 63 paths. Development-only debug routes are omitted from the exported specification.
++The specification covers 86 operations across 66 paths. Development-only debug routes are omitted from the exported specification.
+ 
+ # Request and response schemas
+ 
+@@ -1078,6 +1125,19 @@ The specification covers 82 operations across 63 paths. Development-only debug r
+ | `sellingUnitPrice` | number or string (double) | No | minimum: 0; maximum: 1000000000; pattern: ^-?(?:0\|[1-9]\d*)(?:\.\d+)?$ |
+ | `priceRevision` | integer or string (int32) | No | minimum: 1; maximum: 2147483647; pattern: ^-?(?:0\|[1-9]\d*)$ |
+ 
++## CreateStakeholderExpenseDto
++
++| Field | Type | Required | Constraints |
++|---|---|---|---|
++| `clientExpenseId` | string (uuid) | No | — |
++| `branchId` | null or string (uuid) | No | — |
++| `category` | string | Yes | pattern: ^(Rent\|Other)$ |
++| `amount` | number or string (double) | No | minimum: 0.0001; maximum: 1000000000000; pattern: ^-?(?:0\|[1-9]\d*)(?:\.\d+)?$ |
++| `occurredAtUtc` | string (date-time) | No | — |
++| `description` | string | Yes | minLength: 3; maxLength: 1000 |
++| `paidTo` | null or string | No | minLength: 0; maxLength: 200 |
++| `referenceNumber` | null or string | No | minLength: 0; maxLength: 100 |
++
+ ## CreateStockTransferDto
+ 
+ | Field | Type | Required | Constraints |
+@@ -1637,6 +1697,39 @@ Type: string (binary).
+ | `grossProfit` | null or number or string (double) | Yes | pattern: ^-?(?:0\|[1-9]\d*)(?:\.\d+)?$ |
+ | `missingCostEntries` | integer or string (int32) | Yes | pattern: ^-?(?:0\|[1-9]\d*)$ |
+ 
++## StakeholderExpenseDto
++
++| Field | Type | Required | Constraints |
++|---|---|---|---|
++| `id` | string (uuid) | Yes | — |
++| `clientExpenseId` | string (uuid) | Yes | — |
++| `branchId` | null or string (uuid) | Yes | — |
++| `branchName` | null or string | Yes | — |
++| `category` | string | Yes | — |
++| `amount` | number or string (double) | Yes | pattern: ^-?(?:0\|[1-9]\d*)(?:\.\d+)?$ |
++| `occurredAtUtc` | string (date-time) | Yes | — |
++| `description` | string | Yes | — |
++| `paidTo` | null or string | Yes | — |
++| `referenceNumber` | null or string | Yes | — |
++| `createdByUserId` | string (uuid) | Yes | — |
++| `createdAtUtc` | string (date-time) | Yes | — |
++| `voidedByUserId` | null or string (uuid) | Yes | — |
++| `voidedAtUtc` | null or string (date-time) | Yes | — |
++| `voidReason` | null or string | Yes | — |
++
++## StakeholderExpensePageDto
++
++| Field | Type | Required | Constraints |
++|---|---|---|---|
++| `activeAmount` | number or string (double) | Yes | pattern: ^-?(?:0\|[1-9]\d*)(?:\.\d+)?$ |
++| `items` | array of StakeholderExpenseDto | Yes | — |
++| `totalCount` | integer or string (int32) | Yes | pattern: ^-?(?:0\|[1-9]\d*)$ |
++| `pageNumber` | integer or string (int32) | Yes | pattern: ^-?(?:0\|[1-9]\d*)$ |
++| `pageSize` | integer or string (int32) | Yes | pattern: ^-?(?:0\|[1-9]\d*)$ |
++| `totalPages` | integer or string (int32) | No | pattern: ^-?(?:0\|[1-9]\d*)$ |
++| `hasPreviousPage` | boolean | No | — |
++| `hasNextPage` | boolean | No | — |
++
+ ## StakeholderProfitDto
+ 
+ | Field | Type | Required | Constraints |
+@@ -1782,3 +1875,9 @@ Type: string (binary).
+ | Field | Type | Required | Constraints |
+ |---|---|---|---|
+ | `reason` | string | Yes | minLength: 3; maxLength: 1000 |
++
++## VoidStakeholderExpenseDto
++
++| Field | Type | Required | Constraints |
++|---|---|---|---|
++| `reason` | string | Yes | minLength: 3; maxLength: 1000 |
+diff --git a/docs/api/usage-guide.md b/docs/api/usage-guide.md
+index d15467b..410316c 100644
+--- a/docs/api/usage-guide.md
++++ b/docs/api/usage-guide.md
+@@ -194,6 +194,14 @@ Assigned managers and the stakeholder use `POST /api/branches/{branchId}/expense
+ 
+ `GET .../expenses` lists expenses including voided records. Identical create retries return the same entry; reused identifiers with different data return 409. To correct a mistaken entry, `POST .../expenses/{expenseId}/void` with a reason, then create its replacement with a new identifier. Voiding preserves the record, actor, timestamp, and reason; it removes the expense from its original reporting period. This corrects historical reports rather than creating a current-period refund. Sellers cannot create, view, or void expenses.
+ 
++### Standalone stakeholder expenses
++
++Stakeholder-paid rent and other spending are recorded in the separate `StakeholderExpenses` table through `POST /api/stakeholder-expenses`. Only stakeholders can create/read/void these entries. Category is `Rent` or `Other`; record amount, UTC expense date and description, with optional branch/payee/reference. The branch reference is descriptive and does not charge its manager.
++
++**This register has no effect on either profit report.** Seller salaries remain in branch expenses and keep their existing branch-net-profit deduction. New Rent entries in branch expenses are rejected even if you previously added that category locally. Existing records are preserved; [the update guide](../stakeholder-expenses-update.md) explains how to correct rent already entered as a branch expense.
++
++`GET /api/stakeholder-expenses` provides pagination and optional branch/category/date/search filters. `activeAmount` totals matching non-voided expenses across all pages, independently of profit. Voids are hidden unless `includeVoided=true`; their amounts never contribute. `GET /api/stakeholder-expenses/{expenseId}` reads one entry. `POST /api/stakeholder-expenses/{expenseId}/void` requires a reason and preserves audit history. Exact retries are idempotent. To correct a record, void and create a replacement using a new client identifier. No payment is executed by recording an expense.
++
+ ## 9. Product photos
+ 
+ Stakeholder uploads multipart form data to `POST /api/products/{productId}/photos`; field `file` contains the image and `sortOrder` controls ordering. Upload limit is 5 MiB (request limit 6 MiB), decoded pixel limit 20 million, normalized display longest dimension 1600 pixels. New photos are WebP, stripped of source metadata, and compressed to at most 150 KiB; dimensions/quality can decrease to fit. Existing photos are preserved until replaced.
+diff --git a/docs/stakeholder-expenses-update.md b/docs/stakeholder-expenses-update.md
+new file mode 100644
+index 0000000..fc23981
+--- /dev/null
++++ b/docs/stakeholder-expenses-update.md
+@@ -0,0 +1,101 @@
++# Standalone stakeholder expenses
++
++Rent belongs to the stakeholder's separate expense register. It records where money was spent, like a spreadsheet, without changing any profit calculation.
++
++| Entry | Table | Effect on profit |
++|---|---|---|
++| Seller salary / branch expense | Existing `BranchExpenses` | Existing branch net-profit deduction |
++| Stakeholder-paid rent | New `StakeholderExpenses` | None |
++| Other stakeholder spending | New `StakeholderExpenses` | None |
++
++Each entry stores category, amount, date, description, optional payee/reference, optional branch, and creation/void audit. The optional branch describes the expense; it never charges the branch manager. Only stakeholders can use the register. Its `activeAmount` is an independent spending total.
++
++## Apply from Visual Studio Terminal
++
++Apply after `marketapp-profit-accounting.patch`. Stop the API and copy `marketapp-stakeholder-expenses.patch` into your solution folder. Run each command separately; stop if one fails.
++
++```powershell
++git apply --check .\marketapp-stakeholder-expenses.patch
++```
++
++```powershell
++git apply .\marketapp-stakeholder-expenses.patch
++```
++
++```powershell
++dotnet build MarketApp.slnx
++```
++
++```powershell
++dotnet tool restore
++```
++
++Check your API connection points to `MarketApp_Test`, then:
++
++```powershell
++dotnet ef database update --project src/MarketApp.Infrastructure --startup-project src/MarketApp.Api
++```
++
++The migration `20261009155617_AddStakeholderExpenseRegister` is included. **Do not run Add-Migration for this feature.** It creates one table and its indexes, foreign keys and checks. No existing expenses are moved or deleted. The incremental SQL is in `docs/stakeholder-expenses-upgrade.sql` for review; normally use `database update`, not both installation methods.
++
++```powershell
++dotnet run --project src/MarketApp.Api -- --environment Development
++```
++
++Open `src/MarketApp.Api/ControllersTester/StakeholderExpenses.http`, fill the token/IDs/UTC dates, and send requests individually.
++
++## If you already followed the earlier Rent instructions
++
++Keep your existing `AddRentExpenseCategory` migration if already applied. This patch leaves those category-validation/configuration files untouched. It adds an application check to reject **new** rent records in branch expenses, even when your local validation still allows Rent. If you have not made the earlier changes, skip them: Rent now uses `/api/stakeholder-expenses`.
++
++Existing rent in `BranchExpenses` remains there and continues to deduct from branch net profit until corrected:
++
++1. Read the original amount, branch, expense date and description.
++2. Create the equivalent stakeholder expense with a new client ID and original expense date. Include the old branch-expense ID in its description/reference for traceability. Preserve the new client ID for retries.
++3. Void the old branch expense using `POST /api/branches/{branchId}/expenses/{expenseId}/void`, with a reason referencing the new stakeholder expense ID.
++4. Verify both records. Voiding removes the original branch deduction; the standalone expense itself has no effect on profits.
++
++These are two separate requests, so complete both and retain IDs to resume safely if interrupted. No automatic data movement is performed. Do not delete a previously applied migration to achieve this correction.
++
++## API and usage
++
++All four endpoints are stakeholder-only. Sellers/managers receive 403.
++
++| Method | Route | Purpose |
++|---|---|---|
++| POST | `/api/stakeholder-expenses` | Record Rent or Other spending |
++| GET | `/api/stakeholder-expenses` | Paged register and independent active spending total |
++| GET | `/api/stakeholder-expenses/{expenseId}` | Read one entry including audit |
++| POST | `/api/stakeholder-expenses/{expenseId}/void` | Void an incorrect entry, preserving its history |
++
++Create request example (replace identifiers and date):
++
++```json
++{
++  "clientExpenseId": "NEW-GUID-HERE",
++  "branchId": null,
++  "category": "Rent",
++  "amount": 500,
++  "occurredAtUtc": "2026-10-09T10:00:00Z",
++  "description": "October premises rent",
++  "paidTo": "Landlord name",
++  "referenceNumber": "RENT-2026-10"
++}
++```
++
++Use a branch GUID to associate the expense with a branch, or omit the field/use JSON `null` for general spending. Existing inactive branches can be referenced for historical expenses. Category values are case-sensitive `Rent` and `Other`; seller salaries continue to use the branch-expense endpoint with `Salary`. Amount must be positive with at most four decimals. Expense date must be UTC, from year 2000 through server time plus five minutes. Description is required; payee/reference are optional.
++
++List filters: `branchId`, `category`, `fromUtc` (inclusive), `toUtc` (exclusive), `search` (description/payee/reference), `includeVoided`, `pageNumber`, `pageSize` (1–100). Omitted dates return all-time entries; periods may exceed 31 days. Search follows database text-comparison rules. Results sort by expense date descending, then ID. Voids are hidden by default. `includeVoided=true` shows them for audit, but `activeAmount` always totals only matching non-voided entries across **all pages**. It never deducts from profit.
++
++Exact create retries by the same stakeholder return the existing record. Reusing an identifier with changed fields/user returns 409. Retrying a voided create never reactivates it. To correct amount/category/date, void the entry with a reason and create a replacement with a new client identifier. No hard-delete endpoint is provided. The API records spending; it does not execute payments.
++
++## Acceptance example
++
++With two units sold at 170, baseline 100, purchase cost 80, and branch salary 100, adding stakeholder rent 500 produces:
++
++- Stakeholder profit: **40**, unchanged.
++- Branch gross profit: **140**, unchanged.
++- Branch net profit: **40**, unchanged.
++- Standalone active spending: increases by **500**.
++
++Compare profit requests in the same reporting period before/after adding and voiding rent. See `docs/stakeholder-expenses-verification.md` for tests and PostgreSQL acceptance limits.
+diff --git a/docs/stakeholder-expenses-upgrade.sql b/docs/stakeholder-expenses-upgrade.sql
+new file mode 100644
+index 0000000..c6e75e9
+--- /dev/null
++++ b/docs/stakeholder-expenses-upgrade.sql
+@@ -0,0 +1,41 @@
++START TRANSACTION;
++CREATE TABLE "StakeholderExpenses" (
++    "Id" uuid NOT NULL,
++    "ClientExpenseId" uuid NOT NULL,
++    "RequestHash" character varying(64) NOT NULL,
++    "BranchId" uuid,
++    "Category" character varying(20) NOT NULL,
++    "Amount" numeric(18,4) NOT NULL,
++    "OccurredAtUtc" timestamp with time zone NOT NULL,
++    "Description" character varying(1000) NOT NULL,
++    "PaidTo" character varying(200),
++    "ReferenceNumber" character varying(100),
++    "CreatedByUserId" uuid NOT NULL,
++    "CreatedAtUtc" timestamp with time zone NOT NULL,
++    "VoidedByUserId" uuid,
++    "VoidedAtUtc" timestamp with time zone,
++    "VoidReason" character varying(1000),
++    CONSTRAINT "PK_StakeholderExpenses" PRIMARY KEY ("Id"),
++    CONSTRAINT "CK_StakeholderExpenses_Amount" CHECK ("Amount" > 0),
++    CONSTRAINT "CK_StakeholderExpenses_Category" CHECK ("Category" IN ('Rent', 'Other')),
++    CONSTRAINT "CK_StakeholderExpenses_Void" CHECK (("VoidedAtUtc" IS NULL AND "VoidedByUserId" IS NULL AND "VoidReason" IS NULL) OR
++("VoidedAtUtc" IS NOT NULL AND "VoidedByUserId" IS NOT NULL AND "VoidReason" IS NOT NULL)),
++    CONSTRAINT "FK_StakeholderExpenses_AspNetUsers_CreatedByUserId" FOREIGN KEY ("CreatedByUserId") REFERENCES "AspNetUsers" ("Id") ON DELETE RESTRICT,
++    CONSTRAINT "FK_StakeholderExpenses_AspNetUsers_VoidedByUserId" FOREIGN KEY ("VoidedByUserId") REFERENCES "AspNetUsers" ("Id") ON DELETE RESTRICT,
++    CONSTRAINT "FK_StakeholderExpenses_Branches_BranchId" FOREIGN KEY ("BranchId") REFERENCES "Branches" ("Id") ON DELETE RESTRICT
++);
++
++CREATE INDEX "IX_StakeholderExpenses_BranchId_OccurredAtUtc_Id" ON "StakeholderExpenses" ("BranchId", "OccurredAtUtc", "Id");
++
++CREATE UNIQUE INDEX "IX_StakeholderExpenses_ClientExpenseId" ON "StakeholderExpenses" ("ClientExpenseId");
++
++CREATE INDEX "IX_StakeholderExpenses_CreatedByUserId" ON "StakeholderExpenses" ("CreatedByUserId");
++
++CREATE INDEX "IX_StakeholderExpenses_OccurredAtUtc_Id" ON "StakeholderExpenses" ("OccurredAtUtc", "Id");
++
++CREATE INDEX "IX_StakeholderExpenses_VoidedByUserId" ON "StakeholderExpenses" ("VoidedByUserId");
++
++INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
++VALUES ('20261009155617_AddStakeholderExpenseRegister', '10.0.12');
++
++COMMIT;
+diff --git a/docs/stakeholder-expenses-verification.md b/docs/stakeholder-expenses-verification.md
+new file mode 100644
+index 0000000..5be4c7c
+--- /dev/null
++++ b/docs/stakeholder-expenses-verification.md
+@@ -0,0 +1,16 @@
++# Stakeholder expense verification — 9 October 2026
++
++Baseline: the delivered `marketapp-profit-accounting.patch`, after Batches 1–3.
++
++- Solution built with .NET SDK 10.0.401: zero warnings and zero errors.
++- Full automated suite: **117 passed, 0 failed, 5 skipped** (86 API, 16 application, 15 photo tests).
++- Creating and voiding standalone rent leaves branch gross/net profit, branch expenses, stakeholder profit, stock and saved purchase costs unchanged. Existing seller salary deductions remain intact.
++- Tests cover exact retries, conflicting payloads/client IDs, void audit and retries, general expenses without a branch, historical inactive-branch expenses, missing references, invalid amounts/categories/dates, stakeholder-only permissions, filtered totals across pages, text search, and reporting date boundaries.
++- Compatibility was checked with the earlier local Rent changes in branch DTO validation, database configuration and EF snapshot. The patch applied successfully, and two targeted API tests passed: branch rent rejection and independent stakeholder rent accounting.
++- Neither profit query references StakeholderExpenses. Existing category/configuration files and previous HTTP files are excluded from this patch.
++- EF reports no pending model changes. Migration `20261009155617_AddStakeholderExpenseRegister` and its incremental SQL create only the new table and its keys/indexes/checks. Existing expenses are not automatically moved or deleted.
++- OpenAPI and the reference document cover **86 operations, 66 paths and 89 schemas**.
++
++Five PostgreSQL-only tests remain skipped by default: concurrent sales, concurrent returns, duplicate offline sync, JWT logout/session revocation, and refresh-token reuse. The default API tests use real controllers/services/repositories with SQLite transactions and disable PostgreSQL-specific constraints/xmin behavior. No live PostgreSQL server or your database was available here; the migration has not been applied to your database.
++
++Apply the migration to your restored `MarketApp_Test` database, then run `StakeholderExpenses.http`. PostgreSQL integration-test instructions are in `docs/profit-accounting-verification.md`; those tests create isolated schemas from the model, so applying the actual migration remains a separate acceptance step.
+diff --git a/src/MarketApp.Api/Controllers/StakeholderExpensesController.cs b/src/MarketApp.Api/Controllers/StakeholderExpensesController.cs
+new file mode 100644
+index 0000000..cac1940
+--- /dev/null
++++ b/src/MarketApp.Api/Controllers/StakeholderExpensesController.cs
+@@ -0,0 +1,27 @@
++using System.Security.Claims;
++using MarketApp.Application.Common.Security;
++using MarketApp.Application.DTOs.Accounting;
++using MarketApp.Application.Interfaces.Services;
++using Microsoft.AspNetCore.Authorization;
++using Microsoft.AspNetCore.Mvc;
++namespace MarketApp.Api.Controllers;
++
++[ApiController, Route("api/stakeholder-expenses")]
++[Authorize(Policy = "AuthenticatedUser", Roles = AppRoles.Stakeholder)]
++[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
++public sealed class StakeholderExpensesController(IStakeholderExpenseService service, IStakeholderExpenseQueries queries) : ControllerBase
++{
++    private Guid Actor => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
++    [HttpPost, ProducesResponseType(typeof(StakeholderExpenseDto), 200)]
++    public async Task<IActionResult> Create(CreateStakeholderExpenseDto request, CancellationToken ct)
++        => Ok(await service.CreateAsync(Actor, request, ct));
++    [HttpGet, ProducesResponseType(typeof(StakeholderExpensePageDto), 200)]
++    public async Task<IActionResult> List([FromQuery] StakeholderExpenseQuery query, CancellationToken ct)
++        => Ok(await queries.ListAsync(query, ct));
++    [HttpGet("{expenseId:guid}"), ProducesResponseType(typeof(StakeholderExpenseDto), 200)]
++    public async Task<IActionResult> Get(Guid expenseId, CancellationToken ct)
++        => Ok(await queries.GetAsync(expenseId, ct));
++    [HttpPost("{expenseId:guid}/void"), ProducesResponseType(typeof(StakeholderExpenseDto), 200)]
++    public async Task<IActionResult> Void(Guid expenseId, VoidStakeholderExpenseDto request, CancellationToken ct)
++        => Ok(await service.VoidAsync(expenseId, Actor, request, ct));
++}
+diff --git a/src/MarketApp.Api/ControllersTester/StakeholderExpenses.http b/src/MarketApp.Api/ControllersTester/StakeholderExpenses.http
+new file mode 100644
+index 0000000..3fbae90
+--- /dev/null
++++ b/src/MarketApp.Api/ControllersTester/StakeholderExpenses.http
+@@ -0,0 +1,97 @@
++# Use MarketApp_Test. Send requests individually and compare profits before/after.
++@baseUrl = https://localhost:7126
++@stakeholderToken = REPLACE_STAKEHOLDER_TOKEN
++@managerToken = REPLACE_MANAGER_TOKEN
++@sellerToken = REPLACE_SELLER_TOKEN
++@branchId = REPLACE_BRANCH_ID
++@expenseId = REPLACE_AFTER_CREATING_EXPENSE
++@occurredAtUtc = REPLACE_EXPENSE_DATE_UTC_Z
++@fromUtc = REPLACE_START_UTC_Z
++@toUtc = REPLACE_END_UTC_Z
++
++### 1. Record branch profit before rent. Re-run after step3: profit must be unchanged.
++GET {{baseUrl}}/api/branches/{{branchId}}/reports/profit?fromUtc={{fromUtc}}&toUtc={{toUtc}}
++Authorization: Bearer {{stakeholderToken}}
++
++### 2. Record stakeholder profit before rent. Re-run after step3: profit must be unchanged.
++GET {{baseUrl}}/api/reports/stakeholder-profit?branchId={{branchId}}&fromUtc={{fromUtc}}&toUtc={{toUtc}}
++Authorization: Bearer {{stakeholderToken}}
++
++### 3. Record stakeholder rent. Expected200; copy returned id to expenseId.
++# Optional branch reference describes the expense; it does not charge the branch manager.
++# Use a new clientExpenseId per NEW entry. Exact retries return the existing entry.
++POST {{baseUrl}}/api/stakeholder-expenses
++Authorization: Bearer {{stakeholderToken}}
++Content-Type: application/json
++
++{
++  "clientExpenseId": "d5000000-0000-4000-8000-000000000001",
++  "branchId": "{{branchId}}",
++  "category": "Rent",
++  "amount": 500,
++  "occurredAtUtc": "{{occurredAtUtc}}",
++  "description": "Branch rent for October 2026",
++  "paidTo": "Landlord name",
++  "referenceNumber": "RENT-2026-10"
++}
++
++### 4. Read the register. activeAmount is independent spending across all filtered pages.
++GET {{baseUrl}}/api/stakeholder-expenses?pageNumber=1&pageSize=25
++Authorization: Bearer {{stakeholderToken}}
++
++### 5. Filter by branch/category/date. Start inclusive, end exclusive.
++GET {{baseUrl}}/api/stakeholder-expenses?branchId={{branchId}}&category=Rent&fromUtc={{fromUtc}}&toUtc={{toUtc}}
++Authorization: Bearer {{stakeholderToken}}
++
++### 6. Optional general stakeholder expense, not tied to a branch.
++POST {{baseUrl}}/api/stakeholder-expenses
++Authorization: Bearer {{stakeholderToken}}
++Content-Type: application/json
++
++{
++  "clientExpenseId": "d5000000-0000-4000-8000-000000000002",
++  "branchId": null,
++  "category": "Other",
++  "amount": 25,
++  "occurredAtUtc": "{{occurredAtUtc}}",
++  "description": "General administrative expense",
++  "paidTo": "Supplier name",
++  "referenceNumber": "ADMIN-001"
++}
++
++### 7. Read an entry, including its void audit if applicable.
++GET {{baseUrl}}/api/stakeholder-expenses/{{expenseId}}
++Authorization: Bearer {{stakeholderToken}}
++
++### 8. Manager cannot read this register. Expected403.
++GET {{baseUrl}}/api/stakeholder-expenses
++Authorization: Bearer {{managerToken}}
++
++### 9. Seller cannot read this register. Expected403.
++GET {{baseUrl}}/api/stakeholder-expenses
++Authorization: Bearer {{sellerToken}}
++
++### 10. Optional correction: void an incorrect/test entry; both profit reports remain unchanged.
++# For replacement, create a NEW entry with a NEW clientExpenseId.
++POST {{baseUrl}}/api/stakeholder-expenses/{{expenseId}}/void
++Authorization: Bearer {{stakeholderToken}}
++Content-Type: application/json
++
++{ "reason": "Voiding test rent after verification" }
++
++### 11. Audit view includes voids. activeAmount still excludes voided entries.
++GET {{baseUrl}}/api/stakeholder-expenses?includeVoided=true
++Authorization: Bearer {{stakeholderToken}}
++
++### 12. New rent in branch expenses is rejected. Expected400.
++POST {{baseUrl}}/api/branches/{{branchId}}/expenses
++Authorization: Bearer {{stakeholderToken}}
++Content-Type: application/json
++
++{
++  "clientExpenseId": "d5000000-0000-4000-8000-000000000003",
++  "category": "Rent",
++  "amount": 500,
++  "occurredAtUtc": "{{occurredAtUtc}}",
++  "description": "Must be entered in stakeholder expenses instead"
++}
+diff --git a/src/MarketApp.Application/DTOs/Accounting/StakeholderExpenseDtos.cs b/src/MarketApp.Application/DTOs/Accounting/StakeholderExpenseDtos.cs
+new file mode 100644
+index 0000000..140dc85
+--- /dev/null
++++ b/src/MarketApp.Application/DTOs/Accounting/StakeholderExpenseDtos.cs
+@@ -0,0 +1,37 @@
++using System.ComponentModel.DataAnnotations;
++using MarketApp.Application.Common;
++namespace MarketApp.Application.DTOs.Accounting;
++
++public sealed class CreateStakeholderExpenseDto
++{
++    public Guid ClientExpenseId { get; set; }
++    public Guid? BranchId { get; set; }
++    [Required, RegularExpression("^(Rent|Other)$")] public string Category { get; set; } = "Other";
++    [Range(typeof(decimal), "0.0001", "1000000000000")] public decimal Amount { get; set; }
++    public DateTime OccurredAtUtc { get; set; }
++    [Required, StringLength(1000, MinimumLength = 3)] public string Description { get; set; } = "";
++    [StringLength(200)] public string? PaidTo { get; set; }
++    [StringLength(100)] public string? ReferenceNumber { get; set; }
++}
++public sealed class VoidStakeholderExpenseDto
++{
++    [Required, StringLength(1000, MinimumLength = 3)] public string Reason { get; set; } = "";
++}
++public sealed class StakeholderExpenseQuery
++{
++    [Range(1, 1000000)] public int PageNumber { get; set; } = 1;
++    [Range(1, 100)] public int PageSize { get; set; } = 25;
++    public Guid? BranchId { get; set; }
++    [RegularExpression("^(Rent|Other)$")] public string? Category { get; set; }
++    public DateTime? FromUtc { get; set; }
++    public DateTime? ToUtc { get; set; }
++    [StringLength(200)] public string? Search { get; set; }
++    public bool IncludeVoided { get; set; }
++}
++public record StakeholderExpenseDto(Guid Id, Guid ClientExpenseId, Guid? BranchId, string? BranchName,
++    string Category, decimal Amount, DateTime OccurredAtUtc, string Description, string? PaidTo,
++    string? ReferenceNumber, Guid CreatedByUserId, DateTime CreatedAtUtc,
++    Guid? VoidedByUserId, DateTime? VoidedAtUtc, string? VoidReason);
++public record StakeholderExpensePageDto(IReadOnlyList<StakeholderExpenseDto> Items, int TotalCount,
++    int PageNumber, int PageSize, decimal ActiveAmount)
++    : PagedResult<StakeholderExpenseDto>(Items, TotalCount, PageNumber, PageSize);
+diff --git a/src/MarketApp.Application/Extensions/ApplicationServicesRegistration.cs b/src/MarketApp.Application/Extensions/ApplicationServicesRegistration.cs
+index 372f0f2..05b33d8 100644
+--- a/src/MarketApp.Application/Extensions/ApplicationServicesRegistration.cs
++++ b/src/MarketApp.Application/Extensions/ApplicationServicesRegistration.cs
+@@ -20,6 +20,7 @@ public static class ApplicationServicesRegistration
+         services.AddScoped<IBranchProductPriceService,BranchProductPriceService>();
+ 
+         services.AddScoped<ISalesService, SalesService>();
++        services.AddScoped<IStakeholderExpenseService, StakeholderExpenseService>();
+         services.AddScoped<IAccountingService, AccountingService>();
+         services.AddScoped<IInventoryOperationsService, InventoryOperationsService>();
+         return services;
+diff --git a/src/MarketApp.Application/Interfaces/Services/IStakeholderExpenseQueries.cs b/src/MarketApp.Application/Interfaces/Services/IStakeholderExpenseQueries.cs
+new file mode 100644
+index 0000000..db97349
+--- /dev/null
++++ b/src/MarketApp.Application/Interfaces/Services/IStakeholderExpenseQueries.cs
+@@ -0,0 +1,7 @@
++using MarketApp.Application.DTOs.Accounting;
++namespace MarketApp.Application.Interfaces.Services;
++public interface IStakeholderExpenseQueries
++{
++    Task<StakeholderExpensePageDto> ListAsync(StakeholderExpenseQuery query, CancellationToken ct);
++    Task<StakeholderExpenseDto> GetAsync(Guid expenseId, CancellationToken ct);
++}
+diff --git a/src/MarketApp.Application/Interfaces/Services/IStakeholderExpenseService.cs b/src/MarketApp.Application/Interfaces/Services/IStakeholderExpenseService.cs
+new file mode 100644
+index 0000000..5c7a8bd
+--- /dev/null
++++ b/src/MarketApp.Application/Interfaces/Services/IStakeholderExpenseService.cs
+@@ -0,0 +1,7 @@
++using MarketApp.Application.DTOs.Accounting;
++namespace MarketApp.Application.Interfaces.Services;
++public interface IStakeholderExpenseService
++{
++    Task<StakeholderExpenseDto> CreateAsync(Guid actorId, CreateStakeholderExpenseDto request, CancellationToken ct);
++    Task<StakeholderExpenseDto> VoidAsync(Guid expenseId, Guid actorId, VoidStakeholderExpenseDto request, CancellationToken ct);
++}
+diff --git a/src/MarketApp.Application/Persistence/Contracts/IUnitOfWork.cs b/src/MarketApp.Application/Persistence/Contracts/IUnitOfWork.cs
+index b518552..50e5e10 100644
+--- a/src/MarketApp.Application/Persistence/Contracts/IUnitOfWork.cs
++++ b/src/MarketApp.Application/Persistence/Contracts/IUnitOfWork.cs
+@@ -25,6 +25,7 @@ public interface IUnitOfWork
+     IGeneralRepository<MarketApp.Domain.Entity.Sales.SalesInvoice> SalesInvoices { get; }
+     IGeneralRepository<MarketApp.Domain.Entity.Inventory.StockCostHistory> StockCostHistories { get; }
+     IGeneralRepository<MarketApp.Domain.Entity.Sales.BranchExpense> BranchExpenses { get; }
++    IGeneralRepository<MarketApp.Domain.Entity.Accounting.StakeholderExpense> StakeholderExpenses { get; }
+     Task<IUnitOfWorkTransaction> BeginSerializableAsync(CancellationToken ct = default);
+     Task<int> SaveChangesAsync(
+         CancellationToken cancellationToken = default);
+diff --git a/src/MarketApp.Application/Services/AccountingService.cs b/src/MarketApp.Application/Services/AccountingService.cs
+index 32dd539..b8c19bc 100644
+--- a/src/MarketApp.Application/Services/AccountingService.cs
++++ b/src/MarketApp.Application/Services/AccountingService.cs
+@@ -81,6 +81,7 @@ public sealed class AccountingService(IUnitOfWork work, ISalesQueries sales) : I
+         await using var transaction = await work.BeginSerializableAsync(ct);
+         var previous = await work.BranchExpenses.FindAsync(e => e.BranchId == branchId && e.ClientExpenseId == request.ClientExpenseId, cancellationToken: ct);
+         if (previous is not null) { Replay(previous.RequestHash, hash); return ToDto(previous); }
++        if (request.Category == "Rent") throw new RequestException(400, "Record rent in /api/stakeholder-expenses. Rent does not belong to branch profit expenses.");
+         if (!await work.Branches.AnyAsync(b => b.Id == branchId && b.IsActive, ct)) throw new ConflictException("Branch is missing or inactive.");
+         if (request.EmployeeUserId is Guid employee && !await sales.IsAssignedUserAsync(branchId, employee, AppRoles.Seller, ct))
+             throw new RequestException(400, "Employee must be an active seller assigned to this branch. For a historical or grouped expense, omit EmployeeUserId and describe it.");
+diff --git a/src/MarketApp.Application/Services/StakeholderExpenseService.cs b/src/MarketApp.Application/Services/StakeholderExpenseService.cs
+new file mode 100644
+index 0000000..3eb0811
+--- /dev/null
++++ b/src/MarketApp.Application/Services/StakeholderExpenseService.cs
+@@ -0,0 +1,78 @@
++using System.ComponentModel.DataAnnotations;
++using System.Security.Cryptography;
++using System.Text.Json;
++using MarketApp.Application.Common.Exceptions;
++using MarketApp.Application.DTOs.Accounting;
++using MarketApp.Application.Interfaces.Services;
++using MarketApp.Application.Persistence.Contracts;
++using MarketApp.Domain.Entity.Accounting;
++namespace MarketApp.Application.Services;
++
++public sealed class StakeholderExpenseService(IUnitOfWork work) : IStakeholderExpenseService
++{
++    private static void Validate(object value)
++    {
++        var errors = new List<ValidationResult>();
++        if (!Validator.TryValidateObject(value, new ValidationContext(value), errors, true))
++            throw new RequestException(400, string.Join(" ", errors.Select(e => e.ErrorMessage)));
++    }
++    private static string? Optional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
++    public static StakeholderExpenseDto ToDto(StakeholderExpense e) => new(e.Id, e.ClientExpenseId, e.BranchId,
++        e.Branch?.Name, e.Category, e.Amount, e.OccurredAtUtc, e.Description, e.PaidTo, e.ReferenceNumber,
++        e.CreatedByUserId, e.CreatedAtUtc, e.VoidedByUserId, e.VoidedAtUtc, e.VoidReason);
++
++    public async Task<StakeholderExpenseDto> CreateAsync(Guid actorId, CreateStakeholderExpenseDto request, CancellationToken ct)
++    {
++        Validate(request);
++        if (actorId == Guid.Empty || request.ClientExpenseId == Guid.Empty || request.BranchId == Guid.Empty)
++            throw new RequestException(400, "A client expense identifier and authenticated stakeholder are required. Omit BranchId for a general expense.");
++        if (decimal.Round(request.Amount, 4) != request.Amount)
++            throw new RequestException(400, "Use at most four decimal places for the amount.");
++        if (request.Description.Trim().Length < 3)
++            throw new RequestException(400, "Provide a meaningful expense description.");
++        if (request.OccurredAtUtc.Kind != DateTimeKind.Utc ||
++            request.OccurredAtUtc < new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc) ||
++            request.OccurredAtUtc > DateTime.UtcNow.AddMinutes(5))
++            throw new RequestException(400, "Use a UTC expense date (Z), from year 2000 through now.");
++        var hash = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new { actorId, request })));
++        await using var transaction = await work.BeginSerializableAsync(ct);
++        var previous = await work.StakeholderExpenses.FindAsync(e => e.ClientExpenseId == request.ClientExpenseId,
++            includes: [e => e.Branch!], cancellationToken: ct);
++        if (previous is not null)
++        {
++            if (previous.RequestHash != hash) throw new ConflictException("This client identifier was already used with different data or a different user.");
++            return ToDto(previous);
++        }
++        // Inactive branches may have historical rent to record. This reference is descriptive only.
++        var branch = request.BranchId is Guid branchId
++            ? await work.Branches.FindAsync(b => b.Id == branchId, cancellationToken: ct)
++                ?? throw new RequestException(404, "Branch not found.")
++            : null;
++        var expense = new StakeholderExpense {
++            ClientExpenseId = request.ClientExpenseId, RequestHash = hash, BranchId = request.BranchId,
++            Category = request.Category, Amount = request.Amount, OccurredAtUtc = request.OccurredAtUtc,
++            Description = request.Description.Trim(), PaidTo = Optional(request.PaidTo), ReferenceNumber = Optional(request.ReferenceNumber),
++            CreatedByUserId = actorId };
++        await work.StakeholderExpenses.AddAsync(expense, ct);
++        await work.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
++        return ToDto(expense) with { BranchName = branch?.Name };
++    }
++    public async Task<StakeholderExpenseDto> VoidAsync(Guid expenseId, Guid actorId, VoidStakeholderExpenseDto request, CancellationToken ct)
++    {
++        Validate(request);
++        if (actorId == Guid.Empty || request.Reason.Trim().Length < 3)
++            throw new RequestException(400, "An authenticated stakeholder and meaningful void reason are required.");
++        await using var transaction = await work.BeginSerializableAsync(ct);
++        var expense = await work.StakeholderExpenses.FindAsync(e => e.Id == expenseId, includes: [e => e.Branch!],
++            trackChanges: true, cancellationToken: ct) ?? throw new RequestException(404, "Stakeholder expense not found.");
++        if (expense.VoidedAtUtc is not null)
++        {
++            if (expense.VoidedByUserId != actorId || expense.VoidReason != request.Reason.Trim())
++                throw new ConflictException("Expense was already voided with different details.");
++            return ToDto(expense);
++        }
++        expense.VoidedAtUtc = DateTime.UtcNow; expense.VoidedByUserId = actorId; expense.VoidReason = request.Reason.Trim();
++        await work.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
++        return ToDto(expense);
++    }
++}
+diff --git a/src/MarketApp.Domain/Entity/Accounting/StakeholderExpense.cs b/src/MarketApp.Domain/Entity/Accounting/StakeholderExpense.cs
+new file mode 100644
+index 0000000..d6ab4f2
+--- /dev/null
++++ b/src/MarketApp.Domain/Entity/Accounting/StakeholderExpense.cs
+@@ -0,0 +1,24 @@
++using MarketApp.Domain.Entity.Main;
++namespace MarketApp.Domain.Entity.Accounting;
++
++// A standalone spending register. This table is never an input to profit calculations.
++public class StakeholderExpense
++{
++    public Guid Id { get; set; } = Guid.NewGuid();
++    public Guid ClientExpenseId { get; set; }
++    public string RequestHash { get; set; } = "";
++    public Guid? BranchId { get; set; }
++    public Branch? Branch { get; set; }
++    public string Category { get; set; } = "Other";
++    public decimal Amount { get; set; }
++    public DateTime OccurredAtUtc { get; set; }
++    public string Description { get; set; } = "";
++    public string? PaidTo { get; set; }
++    public string? ReferenceNumber { get; set; }
++    public Guid CreatedByUserId { get; set; }
++    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
++    public Guid? VoidedByUserId { get; set; }
++    public DateTime? VoidedAtUtc { get; set; }
++    public string? VoidReason { get; set; }
++    public uint Version { get; set; }
++}
+diff --git a/src/MarketApp.Infrastructure/Extension/ServiceCollectionsExtension.cs b/src/MarketApp.Infrastructure/Extension/ServiceCollectionsExtension.cs
+index c1549e9..898cb53 100644
+--- a/src/MarketApp.Infrastructure/Extension/ServiceCollectionsExtension.cs
++++ b/src/MarketApp.Infrastructure/Extension/ServiceCollectionsExtension.cs
+@@ -119,6 +119,7 @@ public static class ServiceCollectionsExtension
+         services.AddScoped<IBranchAccessService, BranchAccessService>();
+ 
+         services.AddScoped<ISalesQueries, MarketApp.Infrastructure.Services.SalesQueries>();
++        services.AddScoped<IStakeholderExpenseQueries, MarketApp.Infrastructure.Services.StakeholderExpenseQueries>();
+         services.AddScoped<IAccountingQueries, MarketApp.Infrastructure.Services.AccountingQueries>();
+         services.AddScoped<IInventoryOperationsQueries, MarketApp.Infrastructure.Services.InventoryOperationsQueries>();
+         services.AddProductPhotos(configuration);
+diff --git a/src/MarketApp.Infrastructure/Migrations/20261009155617_AddStakeholderExpenseRegister.Designer.cs b/src/MarketApp.Infrastructure/Migrations/20261009155617_AddStakeholderExpenseRegister.Designer.cs
+new file mode 100644
+index 0000000..f5236fb
+--- /dev/null
++++ b/src/MarketApp.Infrastructure/Migrations/20261009155617_AddStakeholderExpenseRegister.Designer.cs
+@@ -0,0 +1,2200 @@
++﻿// <auto-generated />
++using System;
++using MarketApp.Infrastructure.Persistence;
++using Microsoft.EntityFrameworkCore;
++using Microsoft.EntityFrameworkCore.Infrastructure;
++using Microsoft.EntityFrameworkCore.Migrations;
++using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
++using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
++
++#nullable disable
++
++namespace MarketApp.Infrastructure.Migrations
++{
++    [DbContext(typeof(AppDbContext))]
++    [Migration("20261009155617_AddStakeholderExpenseRegister")]
++    partial class AddStakeholderExpenseRegister
++    {
++        /// <inheritdoc />
++        protected override void BuildTargetModel(ModelBuilder modelBuilder)
++        {
++#pragma warning disable 612, 618
++            modelBuilder
++                .HasAnnotation("ProductVersion", "10.0.12")
++                .HasAnnotation("Relational:MaxIdentifierLength", 63);
++
++            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Accounting.StakeholderExpense", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("Amount")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<Guid?>("BranchId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Category")
++                        .IsRequired()
++                        .HasMaxLength(20)
++                        .HasColumnType("character varying(20)");
++
++                    b.Property<Guid>("ClientExpenseId")
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("CreatedByUserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Description")
++                        .IsRequired()
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<DateTime>("OccurredAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("PaidTo")
++                        .HasMaxLength(200)
++                        .HasColumnType("character varying(200)");
++
++                    b.Property<string>("ReferenceNumber")
++                        .HasMaxLength(100)
++                        .HasColumnType("character varying(100)");
++
++                    b.Property<string>("RequestHash")
++                        .IsRequired()
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.Property<string>("VoidReason")
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<DateTime?>("VoidedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid?>("VoidedByUserId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("ClientExpenseId")
++                        .IsUnique();
++
++                    b.HasIndex("CreatedByUserId");
++
++                    b.HasIndex("VoidedByUserId");
++
++                    b.HasIndex("OccurredAtUtc", "Id");
++
++                    b.HasIndex("BranchId", "OccurredAtUtc", "Id");
++
++                    b.ToTable("StakeholderExpenses", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_StakeholderExpenses_Amount", "\"Amount\" > 0");
++
++                            t.HasCheckConstraint("CK_StakeholderExpenses_Category", "\"Category\" IN ('Rent', 'Other')");
++
++                            t.HasCheckConstraint("CK_StakeholderExpenses_Void", "(\"VoidedAtUtc\" IS NULL AND \"VoidedByUserId\" IS NULL AND \"VoidReason\" IS NULL) OR\n(\"VoidedAtUtc\" IS NOT NULL AND \"VoidedByUserId\" IS NOT NULL AND \"VoidReason\" IS NOT NULL)");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockBalance", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal?>("AveragePurchaseUnitCost")
++                        .HasPrecision(18, 6)
++                        .HasColumnType("numeric(18,6)");
++
++                    b.Property<Guid>("InventoryLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("Quantity")
++                        .HasPrecision(18, 3)
++                        .HasColumnType("numeric(18,3)");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("InventoryLocationId");
++
++                    b.HasIndex("ProductId", "InventoryLocationId")
++                        .IsUnique()
++                        .HasDatabaseName("UX_StockBalances_Product_Location");
++
++                    b.ToTable("StockBalances", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_BalanceCost_Nonnegative", "\"AveragePurchaseUnitCost\" >= 0");
++
++                            t.HasCheckConstraint("CK_StockBalances_Quantity_NonNegative", "\"Quantity\" >= 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockCostHistory", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal?>("AveragePurchaseUnitCost")
++                        .HasPrecision(18, 6)
++                        .HasColumnType("numeric(18,6)");
++
++                    b.Property<Guid?>("ClientChangeId")
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("EffectiveAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("InventoryLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("QuantityAtChange")
++                        .HasPrecision(18, 3)
++                        .HasColumnType("numeric(18,3)");
++
++                    b.Property<string>("Reason")
++                        .IsRequired()
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<Guid?>("RecordedByUserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("RequestHash")
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("ClientChangeId")
++                        .IsUnique();
++
++                    b.HasIndex("InventoryLocationId");
++
++                    b.HasIndex("RecordedByUserId");
++
++                    b.HasIndex("ProductId", "InventoryLocationId", "EffectiveAtUtc", "Id");
++
++                    b.ToTable("StockCostHistories", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_StockCostHistory_Values", "\"AveragePurchaseUnitCost\" >= 0 AND \"QuantityAtChange\" >= 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockMovement", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("InventoryLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("MovementType")
++                        .HasColumnType("integer");
++
++                    b.Property<DateTime>("OccurredAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid?>("PurchaseInvoiceLineId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("QuantityChange")
++                        .HasPrecision(18, 3)
++                        .HasColumnType("numeric(18,3)");
++
++                    b.Property<Guid?>("SalesInvoiceLineId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid?>("SalesReturnLineId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid?>("StockAdjustmentId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid?>("StockTransferLineId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("InventoryLocationId");
++
++                    b.HasIndex("PurchaseInvoiceLineId")
++                        .IsUnique()
++                        .HasDatabaseName("UX_StockMovements_PurchaseInvoiceLine")
++                        .HasFilter("\"PurchaseInvoiceLineId\" IS NOT NULL");
++
++                    b.HasIndex("SalesInvoiceLineId")
++                        .IsUnique()
++                        .HasDatabaseName("UX_StockMovements_SalesInvoiceLine")
++                        .HasFilter("\"SalesInvoiceLineId\" IS NOT NULL");
++
++                    b.HasIndex("SalesReturnLineId")
++                        .IsUnique()
++                        .HasFilter("\"SalesReturnLineId\" IS NOT NULL");
++
++                    b.HasIndex("StockAdjustmentId")
++                        .IsUnique()
++                        .HasFilter("\"StockAdjustmentId\" IS NOT NULL");
++
++                    b.HasIndex("StockTransferLineId", "MovementType")
++                        .IsUnique()
++                        .HasDatabaseName("UX_StockMovements_TransferLine_Type")
++                        .HasFilter("\"StockTransferLineId\" IS NOT NULL");
++
++                    b.HasIndex("ProductId", "InventoryLocationId", "OccurredAtUtc", "Id")
++                        .HasDatabaseName("IX_StockMovements_Product_Location_History");
++
++                    b.ToTable("StockMovements", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_StockMovements_Source", "num_nonnulls(\"PurchaseInvoiceLineId\", \"StockTransferLineId\", \"SalesInvoiceLineId\", \"SalesReturnLineId\", \"StockAdjustmentId\") = 1 AND (\n(\"MovementType\" = 1 AND \"PurchaseInvoiceLineId\" IS NOT NULL)\nOR (\"MovementType\" IN (2, 3, 4) AND \"StockTransferLineId\" IS NOT NULL)\nOR (\"MovementType\" = 5 AND \"SalesInvoiceLineId\" IS NOT NULL)\nOR (\"MovementType\" = 6 AND \"SalesReturnLineId\" IS NOT NULL)\nOR (\"MovementType\" = 7 AND \"StockAdjustmentId\" IS NOT NULL))");
++
++                            t.HasCheckConstraint("CK_StockMovements_TypeAndQuantity", "(\"MovementType\" IN (1, 3, 4, 6) AND \"QuantityChange\" > 0) OR (\"MovementType\" IN (2, 5) AND \"QuantityChange\" < 0) OR (\"MovementType\" = 7 AND \"QuantityChange\" <> 0)");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockTransfer", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("DestinationLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Notes")
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<string>("Number")
++                        .IsRequired()
++                        .HasMaxLength(40)
++                        .HasColumnType("character varying(40)");
++
++                    b.Property<DateTime?>("ReceivedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("ReturnReason")
++                        .HasMaxLength(500)
++                        .HasColumnType("character varying(500)");
++
++                    b.Property<DateTime?>("ReturnRequestedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime?>("ReturnedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime?>("ShippedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("SourceLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("Status")
++                        .HasColumnType("integer");
++
++                    b.Property<DateTime>("UpdatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("DestinationLocationId");
++
++                    b.HasIndex("Number")
++                        .IsUnique();
++
++                    b.HasIndex("SourceLocationId");
++
++                    b.ToTable("StockTransfers", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_StockTransfers_DifferentLocations", "\"SourceLocationId\" <> \"DestinationLocationId\"");
++
++                            t.HasCheckConstraint("CK_StockTransfers_ReturnDetails", "(\"Status\" IN (1, 2, 3, 4) AND \"ReturnRequestedAtUtc\" IS NULL AND \"ReturnedAtUtc\" IS NULL AND \"ReturnReason\" IS NULL) OR (\"Status\" = 5 AND \"ReturnRequestedAtUtc\" IS NOT NULL AND \"ReturnRequestedAtUtc\" >= \"ShippedAtUtc\" AND \"ReturnedAtUtc\" IS NULL AND \"ReturnReason\" IS NOT NULL AND length(btrim(\"ReturnReason\")) > 0) OR (\"Status\" = 6 AND \"ReturnRequestedAtUtc\" IS NOT NULL AND \"ReturnRequestedAtUtc\" >= \"ShippedAtUtc\" AND \"ReturnedAtUtc\" IS NOT NULL AND \"ReturnedAtUtc\" >= \"ReturnRequestedAtUtc\" AND \"ReturnReason\" IS NOT NULL AND length(btrim(\"ReturnReason\")) > 0)");
++
++                            t.HasCheckConstraint("CK_StockTransfers_Status", "\"Status\" IN (1, 2, 3, 4, 5, 6)");
++
++                            t.HasCheckConstraint("CK_StockTransfers_StatusTimestamps", "(\"Status\" IN (1, 4) AND \"ShippedAtUtc\" IS NULL AND \"ReceivedAtUtc\" IS NULL) OR (\"Status\" IN (2, 5, 6) AND \"ShippedAtUtc\" IS NOT NULL AND \"ReceivedAtUtc\" IS NULL) OR (\"Status\" = 3 AND \"ShippedAtUtc\" IS NOT NULL AND \"ReceivedAtUtc\" IS NOT NULL AND \"ReceivedAtUtc\" >= \"ShippedAtUtc\")");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockTransferLine", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<int?>("BaselineRevisionAtCreation")
++                        .HasColumnType("integer");
++
++                    b.Property<decimal>("BaselineUnitPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<int>("LineNumber")
++                        .HasColumnType("integer");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal?>("PurchaseUnitCostSnapshot")
++                        .HasPrecision(18, 6)
++                        .HasColumnType("numeric(18,6)");
++
++                    b.Property<decimal>("Quantity")
++                        .HasPrecision(18, 3)
++                        .HasColumnType("numeric(18,3)");
++
++                    b.Property<Guid>("StockTransferId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("ProductId");
++
++                    b.HasIndex("StockTransferId", "LineNumber")
++                        .IsUnique()
++                        .HasDatabaseName("UX_StockTransferLines_Transfer_Line");
++
++                    b.ToTable("StockTransferLines", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_StockTransferLines_BaselineRevisionAtCreation", "\"BaselineRevisionAtCreation\" IS NULL OR \"BaselineRevisionAtCreation\" >= 0");
++
++                            t.HasCheckConstraint("CK_StockTransferLines_BaselineUnitPrice", "\"BaselineUnitPrice\" >= 0");
++
++                            t.HasCheckConstraint("CK_StockTransferLines_LineNumber", "\"LineNumber\" > 0");
++
++                            t.HasCheckConstraint("CK_StockTransferLines_Quantity", "\"Quantity\" > 0");
++
++                            t.HasCheckConstraint("CK_TransferCost_Nonnegative", "\"PurchaseUnitCostSnapshot\" >= 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Branch", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Address")
++                        .HasMaxLength(300)
++                        .HasColumnType("character varying(300)");
++
++                    b.Property<string>("Code")
++                        .IsRequired()
++                        .HasMaxLength(32)
++                        .HasColumnType("character varying(32)");
++
++                    b.Property<bool>("IsActive")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("Name")
++                        .IsRequired()
++                        .HasMaxLength(100)
++                        .HasColumnType("character varying(100)");
++
++                    b.Property<string>("Phone")
++                        .HasMaxLength(30)
++                        .HasColumnType("character varying(30)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("Code")
++                        .IsUnique();
++
++                    b.ToTable("Branches", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Category", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Name")
++                        .IsRequired()
++                        .HasMaxLength(100)
++                        .HasColumnType("character varying(100)");
++
++                    b.HasKey("Id");
++
++                    b.ToTable("Categories", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.InventoryLocation", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid?>("BranchId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Code")
++                        .IsRequired()
++                        .HasMaxLength(32)
++                        .HasColumnType("character varying(32)");
++
++                    b.Property<bool>("IsActive")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("Name")
++                        .IsRequired()
++                        .HasMaxLength(100)
++                        .HasColumnType("character varying(100)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("BranchId");
++
++                    b.HasIndex("Code")
++                        .IsUnique();
++
++                    b.ToTable("InventoryLocations", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Product", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("CategoryId")
++                        .HasColumnType("uuid");
++
++                    b.Property<bool>("IsActive")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("Name")
++                        .IsRequired()
++                        .HasMaxLength(200)
++                        .HasColumnType("character varying(200)");
++
++                    b.Property<string>("Sku")
++                        .IsRequired()
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("CategoryId");
++
++                    b.HasIndex("Sku")
++                        .IsUnique();
++
++                    b.ToTable("Products", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.ProductPhoto", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("ContentHash")
++                        .IsRequired()
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.Property<string>("ContentType")
++                        .IsRequired()
++                        .HasMaxLength(32)
++                        .HasColumnType("character varying(32)");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime?>("DeletedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<long>("FileSizeBytes")
++                        .HasColumnType("bigint");
++
++                    b.Property<bool>("IsReady")
++                        .HasColumnType("boolean");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("SortOrder")
++                        .HasColumnType("integer");
++
++                    b.Property<string>("StorageKey")
++                        .IsRequired()
++                        .HasMaxLength(512)
++                        .HasColumnType("character varying(512)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("StorageKey")
++                        .IsUnique()
++                        .HasDatabaseName("UX_ProductPhotos_StorageKey");
++
++                    b.HasIndex("IsReady", "DeletedAtUtc", "CreatedAtUtc");
++
++                    b.HasIndex("ProductId", "SortOrder", "Id");
++
++                    b.ToTable("ProductPhotos", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_ProductPhotos_ContentHash", "\"ContentHash\" ~ '^[0-9A-F]{64}$'");
++
++                            t.HasCheckConstraint("CK_ProductPhotos_ContentType", "\"ContentType\" IN ('image/jpeg', 'image/png', 'image/webp')");
++
++                            t.HasCheckConstraint("CK_ProductPhotos_FileSizeBytes", "\"FileSizeBytes\" > 0");
++
++                            t.HasCheckConstraint("CK_ProductPhotos_SortOrder", "\"SortOrder\" >= 0");
++
++                            t.HasCheckConstraint("CK_ProductPhotos_StorageKey", "length(btrim(\"StorageKey\")) > 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Supplier", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Address")
++                        .HasMaxLength(300)
++                        .HasColumnType("character varying(300)");
++
++                    b.Property<string>("Code")
++                        .IsRequired()
++                        .HasMaxLength(32)
++                        .HasColumnType("character varying(32)");
++
++                    b.Property<string>("Email")
++                        .HasMaxLength(254)
++                        .HasColumnType("character varying(254)");
++
++                    b.Property<bool>("IsActive")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("Name")
++                        .IsRequired()
++                        .HasMaxLength(150)
++                        .HasColumnType("character varying(150)");
++
++                    b.Property<string>("Phone")
++                        .HasMaxLength(30)
++                        .HasColumnType("character varying(30)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("Code")
++                        .IsUnique();
++
++                    b.ToTable("Suppliers", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Pricing.BranchProductPrice", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("BaselineRevision")
++                        .HasColumnType("integer");
++
++                    b.Property<decimal?>("BaselineUnitPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<Guid>("BranchId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal?>("MinimumSellingPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("Revision")
++                        .HasColumnType("integer");
++
++                    b.Property<DateTime>("UpdatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("ProductId");
++
++                    b.HasIndex("BranchId", "ProductId")
++                        .IsUnique()
++                        .HasDatabaseName("UX_BranchProductPrices_Branch_Product");
++
++                    b.ToTable("BranchProductPrices", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_BranchProductPrices_Baseline", "\"BaselineUnitPrice\" IS NULL OR \"BaselineUnitPrice\" >= 0");
++
++                            t.HasCheckConstraint("CK_BranchProductPrices_BaselineRevision", "\"BaselineRevision\" >= 0 AND \"BaselineRevision\" <= \"Revision\" AND ((\"BaselineUnitPrice\" IS NULL AND \"BaselineRevision\" = 0) OR (\"BaselineUnitPrice\" IS NOT NULL AND \"BaselineRevision\" > 0))");
++
++                            t.HasCheckConstraint("CK_BranchProductPrices_HasPrice", "\"BaselineUnitPrice\" IS NOT NULL OR \"MinimumSellingPrice\" IS NOT NULL");
++
++                            t.HasCheckConstraint("CK_BranchProductPrices_Minimum", "\"MinimumSellingPrice\" IS NULL OR \"MinimumSellingPrice\" >= 0");
++
++                            t.HasCheckConstraint("CK_BranchProductPrices_Revision", "\"Revision\" > 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Pricing.BranchProductPriceHistory", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("BranchProductPriceId")
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("ChangeType")
++                        .HasColumnType("integer");
++
++                    b.Property<DateTime>("ChangedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid?>("ChangedByUserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal?>("NewBaselineUnitPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<decimal?>("NewMinimumSellingPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<decimal?>("OldBaselineUnitPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<decimal?>("OldMinimumSellingPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<string>("Reason")
++                        .IsRequired()
++                        .HasMaxLength(500)
++                        .HasColumnType("character varying(500)");
++
++                    b.Property<int>("Revision")
++                        .HasColumnType("integer");
++
++                    b.Property<Guid?>("StockTransferLineId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("StockTransferLineId");
++
++                    b.HasIndex("BranchProductPriceId", "Revision")
++                        .IsUnique()
++                        .HasDatabaseName("UX_BranchPriceHistory_Price_Revision");
++
++                    b.ToTable("BranchProductPriceHistory", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_BranchPriceHistory_HasNewPrice", "\"NewBaselineUnitPrice\" IS NOT NULL OR \"NewMinimumSellingPrice\" IS NOT NULL");
++
++                            t.HasCheckConstraint("CK_BranchPriceHistory_Prices", "(\"OldBaselineUnitPrice\" IS NULL OR \"OldBaselineUnitPrice\" >= 0) AND (\"NewBaselineUnitPrice\" IS NULL OR \"NewBaselineUnitPrice\" >= 0) AND (\"OldMinimumSellingPrice\" IS NULL OR \"OldMinimumSellingPrice\" >= 0) AND (\"NewMinimumSellingPrice\" IS NULL OR \"NewMinimumSellingPrice\" >= 0)");
++
++                            t.HasCheckConstraint("CK_BranchPriceHistory_Reason", "length(btrim(\"Reason\")) > 0");
++
++                            t.HasCheckConstraint("CK_BranchPriceHistory_Revision", "\"Revision\" > 0");
++
++                            t.HasCheckConstraint("CK_BranchPriceHistory_Source", "(\"ChangeType\" IN (1, 2) AND \"StockTransferLineId\" IS NULL) OR (\"ChangeType\" = 3 AND \"StockTransferLineId\" IS NOT NULL)");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoice", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("InventoryLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<DateOnly>("InvoiceDate")
++                        .HasColumnType("date");
++
++                    b.Property<string>("Notes")
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<string>("Number")
++                        .IsRequired()
++                        .HasMaxLength(40)
++                        .HasColumnType("character varying(40)");
++
++                    b.Property<DateTime?>("PostedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<int>("Status")
++                        .HasColumnType("integer");
++
++                    b.Property<Guid>("SupplierId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("SupplierInvoiceNumber")
++                        .HasMaxLength(100)
++                        .HasColumnType("character varying(100)");
++
++                    b.Property<DateTime>("UpdatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("InventoryLocationId");
++
++                    b.HasIndex("Number")
++                        .IsUnique();
++
++                    b.HasIndex("SupplierId");
++
++                    b.ToTable("PurchaseInvoices", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_PurchaseInvoices_PostedAt", "(\"Status\" = 1 AND \"PostedAtUtc\" IS NULL) OR (\"Status\" = 2 AND \"PostedAtUtc\" IS NOT NULL)");
++
++                            t.HasCheckConstraint("CK_PurchaseInvoices_Status", "\"Status\" IN (1, 2)");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoiceLine", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("LineNumber")
++                        .HasColumnType("integer");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("PurchaseInvoiceId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("Quantity")
++                        .HasPrecision(18, 3)
++                        .HasColumnType("numeric(18,3)");
++
++                    b.Property<decimal>("UnitCost")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("ProductId");
++
++                    b.HasIndex("PurchaseInvoiceId", "LineNumber")
++                        .IsUnique()
++                        .HasDatabaseName("UX_PurchaseInvoiceLines_Invoice_Line");
++
++                    b.ToTable("PurchaseInvoiceLines", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_PurchaseInvoiceLines_LineNumber", "\"LineNumber\" > 0");
++
++                            t.HasCheckConstraint("CK_PurchaseInvoiceLines_Quantity", "\"Quantity\" > 0");
++
++                            t.HasCheckConstraint("CK_PurchaseInvoiceLines_UnitCost", "\"UnitCost\" >= 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.BranchExpense", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("Amount")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<Guid>("BranchId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Category")
++                        .IsRequired()
++                        .HasMaxLength(20)
++                        .HasColumnType("character varying(20)");
++
++                    b.Property<Guid>("ClientExpenseId")
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("CreatedByUserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Description")
++                        .IsRequired()
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<Guid?>("EmployeeUserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("OccurredAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("RequestHash")
++                        .IsRequired()
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.Property<string>("VoidReason")
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<DateTime?>("VoidedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid?>("VoidedByUserId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("CreatedByUserId");
++
++                    b.HasIndex("EmployeeUserId");
++
++                    b.HasIndex("VoidedByUserId");
++
++                    b.HasIndex("BranchId", "ClientExpenseId")
++                        .IsUnique();
++
++                    b.HasIndex("BranchId", "OccurredAtUtc", "Id");
++
++                    b.ToTable("BranchExpenses", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_BranchExpense_Amount", "\"Amount\" > 0");
++
++                            t.HasCheckConstraint("CK_BranchExpense_Category", "\"Category\" IN ('Salary', 'Other')");
++
++                            t.HasCheckConstraint("CK_BranchExpense_Void", "(\"VoidedAtUtc\" IS NULL AND \"VoidedByUserId\" IS NULL AND \"VoidReason\" IS NULL) OR\n(\"VoidedAtUtc\" IS NOT NULL AND \"VoidedByUserId\" IS NOT NULL AND \"VoidReason\" IS NOT NULL)");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.ManagerProfitShare", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("BranchId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("ClientChangeId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("CreatedByUserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("EffectiveFromUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("ManagerUserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("Percent")
++                        .HasPrecision(7, 4)
++                        .HasColumnType("numeric(7,4)");
++
++                    b.Property<string>("Reason")
++                        .IsRequired()
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<string>("RequestHash")
++                        .IsRequired()
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("CreatedByUserId");
++
++                    b.HasIndex("ManagerUserId");
++
++                    b.HasIndex("BranchId", "ClientChangeId")
++                        .IsUnique();
++
++                    b.HasIndex("BranchId", "EffectiveFromUtc")
++                        .IsUnique();
++
++                    b.ToTable("ManagerProfitShares", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_ManagerShare_Percent", "\"Percent\" BETWEEN 0 AND 100");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesInvoice", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("BranchId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("ClientSaleId")
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("InventoryLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<bool>("IsOffline")
++                        .HasColumnType("boolean");
++
++                    b.Property<decimal>("ManagerSharePercentSnapshot")
++                        .HasPrecision(7, 4)
++                        .HasColumnType("numeric(7,4)");
++
++                    b.Property<Guid?>("ManagerUserIdSnapshot")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Notes")
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<string>("Number")
++                        .IsRequired()
++                        .HasMaxLength(40)
++                        .HasColumnType("character varying(40)");
++
++                    b.Property<DateTime?>("ReconciledAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid?>("ReconciledByUserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("RequestHash")
++                        .IsRequired()
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.Property<DateTime>("SoldAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("SoldByUserId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("InventoryLocationId");
++
++                    b.HasIndex("ManagerUserIdSnapshot");
++
++                    b.HasIndex("Number")
++                        .IsUnique();
++
++                    b.HasIndex("ReconciledByUserId");
++
++                    b.HasIndex("SoldByUserId");
++
++                    b.HasIndex("BranchId", "ClientSaleId")
++                        .IsUnique();
++
++                    b.HasIndex("BranchId", "SoldAtUtc", "Id");
++
++                    b.ToTable("SalesInvoices", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_SalesInvoices_ManagerShare", "\"ManagerSharePercentSnapshot\" BETWEEN 0 AND 100 AND\n(\"ManagerUserIdSnapshot\" IS NOT NULL OR \"ManagerSharePercentSnapshot\" = 0)");
++
++                            t.HasCheckConstraint("CK_SalesInvoices_Reconciliation", "(\"ReconciledByUserId\" IS NULL AND \"ReconciledAtUtc\" IS NULL) OR\n(\"ReconciledByUserId\" IS NOT NULL AND \"ReconciledAtUtc\" IS NOT NULL AND \"IsOffline\")");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesInvoiceLine", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("BaselineUnitPriceSnapshot")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<int>("LineNumber")
++                        .HasColumnType("integer");
++
++                    b.Property<decimal>("MinimumSellingPriceSnapshot")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<int>("PriceRevisionSnapshot")
++                        .HasColumnType("integer");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("ProductNameSnapshot")
++                        .IsRequired()
++                        .HasMaxLength(200)
++                        .HasColumnType("character varying(200)");
++
++                    b.Property<string>("ProductSkuSnapshot")
++                        .IsRequired()
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.Property<string>("PurchaseCostReason")
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<string>("PurchaseCostRecordHash")
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.Property<DateTime?>("PurchaseCostRecordedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid?>("PurchaseCostRecordedByUserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal?>("PurchaseUnitCostSnapshot")
++                        .HasPrecision(18, 6)
++                        .HasColumnType("numeric(18,6)");
++
++                    b.Property<decimal>("Quantity")
++                        .HasPrecision(18, 3)
++                        .HasColumnType("numeric(18,3)");
++
++                    b.Property<decimal>("ReturnedQuantity")
++                        .HasPrecision(18, 3)
++                        .HasColumnType("numeric(18,3)");
++
++                    b.Property<Guid>("SalesInvoiceId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("SellingUnitPrice")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("ProductId");
++
++                    b.HasIndex("PurchaseCostRecordedByUserId");
++
++                    b.HasIndex("SalesInvoiceId", "LineNumber")
++                        .IsUnique();
++
++                    b.HasIndex("SalesInvoiceId", "ProductId")
++                        .IsUnique();
++
++                    b.ToTable("SalesInvoiceLines", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_SaleCost_Nonnegative", "\"PurchaseUnitCostSnapshot\" >= 0");
++
++                            t.HasCheckConstraint("CK_SalesLines_Price", "\"BaselineUnitPriceSnapshot\" >= 0 AND \"MinimumSellingPriceSnapshot\" >= 0 AND \"SellingUnitPrice\" >= \"MinimumSellingPriceSnapshot\"");
++
++                            t.HasCheckConstraint("CK_SalesLines_Quantity", "\"Quantity\" > 0 AND \"ReturnedQuantity\" >= 0 AND \"ReturnedQuantity\" <= \"Quantity\"");
++
++                            t.HasCheckConstraint("CK_SalesLines_Sequence", "\"LineNumber\" > 0 AND \"PriceRevisionSnapshot\" > 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesReturn", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("BranchId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("ClientReturnId")
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("CreatedByUserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Number")
++                        .IsRequired()
++                        .HasMaxLength(40)
++                        .HasColumnType("character varying(40)");
++
++                    b.Property<string>("Reason")
++                        .IsRequired()
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<string>("RequestHash")
++                        .IsRequired()
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.Property<Guid>("SalesInvoiceId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("CreatedByUserId");
++
++                    b.HasIndex("Number")
++                        .IsUnique();
++
++                    b.HasIndex("SalesInvoiceId");
++
++                    b.HasIndex("BranchId", "ClientReturnId")
++                        .IsUnique();
++
++                    b.HasIndex("BranchId", "CreatedAtUtc", "Id");
++
++                    b.ToTable("SalesReturns");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesReturnLine", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("Quantity")
++                        .HasPrecision(18, 3)
++                        .HasColumnType("numeric(18,3)");
++
++                    b.Property<bool>("Restock")
++                        .HasColumnType("boolean");
++
++                    b.Property<Guid>("SalesInvoiceLineId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("SalesReturnId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("SalesInvoiceLineId");
++
++                    b.HasIndex("SalesReturnId", "SalesInvoiceLineId")
++                        .IsUnique();
++
++                    b.ToTable("SalesReturnLines", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_ReturnLines_Quantity", "\"Quantity\" > 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.StockAdjustment", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("ClientAdjustmentId")
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("CreatedByUserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("InventoryLocationId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("ProductId")
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("QuantityChange")
++                        .HasPrecision(18, 3)
++                        .HasColumnType("numeric(18,3)");
++
++                    b.Property<string>("Reason")
++                        .IsRequired()
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<string>("RequestHash")
++                        .IsRequired()
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("ClientAdjustmentId")
++                        .IsUnique();
++
++                    b.HasIndex("CreatedByUserId");
++
++                    b.HasIndex("InventoryLocationId");
++
++                    b.HasIndex("ProductId");
++
++                    b.HasIndex("CreatedAtUtc", "Id");
++
++                    b.ToTable("StockAdjustments", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_Adjustments_Quantity", "\"QuantityChange\" <> 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.ApplicationUser", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<int>("AccessFailedCount")
++                        .HasColumnType("integer");
++
++                    b.Property<string>("ConcurrencyStamp")
++                        .IsConcurrencyToken()
++                        .HasColumnType("text");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("Email")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<bool>("EmailConfirmed")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("FullName")
++                        .IsRequired()
++                        .HasMaxLength(150)
++                        .HasColumnType("character varying(150)");
++
++                    b.Property<bool>("IsActive")
++                        .HasColumnType("boolean");
++
++                    b.Property<bool>("LockoutEnabled")
++                        .HasColumnType("boolean");
++
++                    b.Property<DateTimeOffset?>("LockoutEnd")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("NormalizedEmail")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<string>("NormalizedUserName")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<string>("PasswordHash")
++                        .HasColumnType("text");
++
++                    b.Property<string>("PhoneNumber")
++                        .HasColumnType("text");
++
++                    b.Property<bool>("PhoneNumberConfirmed")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("SecurityStamp")
++                        .HasColumnType("text");
++
++                    b.Property<bool>("TwoFactorEnabled")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("UserName")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("NormalizedEmail")
++                        .IsUnique()
++                        .HasDatabaseName("EmailIndex");
++
++                    b.HasIndex("NormalizedUserName")
++                        .IsUnique()
++                        .HasDatabaseName("UserNameIndex");
++
++                    b.ToTable("AspNetUsers", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.ApplicationUserBranch", b =>
++                {
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("BranchId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("UserId", "BranchId");
++
++                    b.HasIndex("BranchId");
++
++                    b.ToTable("UserBranchAssignments", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.AuthSession", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime>("ExpiresAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime?>("LastRefreshedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime?>("RevokedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("SecurityStamp")
++                        .IsRequired()
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("ExpiresAtUtc")
++                        .HasDatabaseName("IX_AuthSessions_Expiry");
++
++                    b.HasIndex("UserId", "ExpiresAtUtc")
++                        .HasDatabaseName("IX_AuthSessions_User_Expiry");
++
++                    b.ToTable("AuthSessions", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_AuthSessions_Expiry", "\"ExpiresAtUtc\" > \"CreatedAtUtc\"");
++
++                            t.HasCheckConstraint("CK_AuthSessions_LastRefresh", "\"LastRefreshedAtUtc\" IS NULL OR \"LastRefreshedAtUtc\" >= \"CreatedAtUtc\"");
++
++                            t.HasCheckConstraint("CK_AuthSessions_Revocation", "\"RevokedAtUtc\" IS NULL OR \"RevokedAtUtc\" >= \"CreatedAtUtc\"");
++
++                            t.HasCheckConstraint("CK_AuthSessions_SecurityStamp", "length(btrim(\"SecurityStamp\")) > 0");
++                        });
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.RefreshToken", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("AuthSessionId")
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime?>("ConsumedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<DateTime>("ExpiresAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("TokenHash")
++                        .IsRequired()
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("TokenHash")
++                        .IsUnique()
++                        .HasDatabaseName("UX_RefreshTokens_TokenHash");
++
++                    b.HasIndex("AuthSessionId", "CreatedAtUtc")
++                        .HasDatabaseName("IX_RefreshTokens_Session_Created");
++
++                    b.ToTable("RefreshTokens", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_RefreshTokens_Consumption", "\"ConsumedAtUtc\" IS NULL OR \"ConsumedAtUtc\" >= \"CreatedAtUtc\"");
++
++                            t.HasCheckConstraint("CK_RefreshTokens_Expiry", "\"ExpiresAtUtc\" > \"CreatedAtUtc\"");
++
++                            t.HasCheckConstraint("CK_RefreshTokens_Hash", "\"TokenHash\" ~ '^[0-9A-F]{64}$'");
++                        });
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("ConcurrencyStamp")
++                        .IsConcurrencyToken()
++                        .HasColumnType("text");
++
++                    b.Property<string>("Name")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<string>("NormalizedName")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("NormalizedName")
++                        .IsUnique()
++                        .HasDatabaseName("RoleNameIndex");
++
++                    b.ToTable("AspNetRoles", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
++                {
++                    b.Property<int>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("integer");
++
++                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
++
++                    b.Property<string>("ClaimType")
++                        .HasColumnType("text");
++
++                    b.Property<string>("ClaimValue")
++                        .HasColumnType("text");
++
++                    b.Property<Guid>("RoleId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("RoleId");
++
++                    b.ToTable("AspNetRoleClaims", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
++                {
++                    b.Property<int>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("integer");
++
++                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
++
++                    b.Property<string>("ClaimType")
++                        .HasColumnType("text");
++
++                    b.Property<string>("ClaimValue")
++                        .HasColumnType("text");
++
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("UserId");
++
++                    b.ToTable("AspNetUserClaims", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
++                {
++                    b.Property<string>("LoginProvider")
++                        .HasColumnType("text");
++
++                    b.Property<string>("ProviderKey")
++                        .HasColumnType("text");
++
++                    b.Property<string>("ProviderDisplayName")
++                        .HasColumnType("text");
++
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("LoginProvider", "ProviderKey");
++
++                    b.HasIndex("UserId");
++
++                    b.ToTable("AspNetUserLogins", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
++                {
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<Guid>("RoleId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("UserId", "RoleId");
++
++                    b.HasIndex("RoleId");
++
++                    b.ToTable("AspNetUserRoles", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
++                {
++                    b.Property<Guid>("UserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("LoginProvider")
++                        .HasColumnType("text");
++
++                    b.Property<string>("Name")
++                        .HasColumnType("text");
++
++                    b.Property<string>("Value")
++                        .HasColumnType("text");
++
++                    b.HasKey("UserId", "LoginProvider", "Name");
++
++                    b.ToTable("AspNetUserTokens", (string)null);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Accounting.StakeholderExpense", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
++                        .WithMany()
++                        .HasForeignKey("BranchId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("CreatedByUserId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("VoidedByUserId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.Navigation("Branch");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockBalance", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "InventoryLocation")
++                        .WithMany()
++                        .HasForeignKey("InventoryLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("InventoryLocation");
++
++                    b.Navigation("Product");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockCostHistory", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", null)
++                        .WithMany()
++                        .HasForeignKey("InventoryLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", null)
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("RecordedByUserId")
++                        .OnDelete(DeleteBehavior.Restrict);
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockMovement", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "InventoryLocation")
++                        .WithMany()
++                        .HasForeignKey("InventoryLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Purchasing.PurchaseInvoiceLine", "PurchaseInvoiceLine")
++                        .WithMany()
++                        .HasForeignKey("PurchaseInvoiceLineId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.HasOne("MarketApp.Domain.Entity.Sales.SalesInvoiceLine", "SalesInvoiceLine")
++                        .WithMany()
++                        .HasForeignKey("SalesInvoiceLineId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.HasOne("MarketApp.Domain.Entity.Sales.SalesReturnLine", "SalesReturnLine")
++                        .WithMany()
++                        .HasForeignKey("SalesReturnLineId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.HasOne("MarketApp.Domain.Entity.Sales.StockAdjustment", "StockAdjustment")
++                        .WithMany()
++                        .HasForeignKey("StockAdjustmentId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.HasOne("MarketApp.Domain.Entity.Inventory.StockTransferLine", "StockTransferLine")
++                        .WithMany()
++                        .HasForeignKey("StockTransferLineId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.Navigation("InventoryLocation");
++
++                    b.Navigation("Product");
++
++                    b.Navigation("PurchaseInvoiceLine");
++
++                    b.Navigation("SalesInvoiceLine");
++
++                    b.Navigation("SalesReturnLine");
++
++                    b.Navigation("StockAdjustment");
++
++                    b.Navigation("StockTransferLine");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockTransfer", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "DestinationLocation")
++                        .WithMany()
++                        .HasForeignKey("DestinationLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "SourceLocation")
++                        .WithMany()
++                        .HasForeignKey("SourceLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("DestinationLocation");
++
++                    b.Navigation("SourceLocation");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockTransferLine", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Inventory.StockTransfer", "StockTransfer")
++                        .WithMany("Lines")
++                        .HasForeignKey("StockTransferId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Product");
++
++                    b.Navigation("StockTransfer");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.InventoryLocation", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
++                        .WithMany()
++                        .HasForeignKey("BranchId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.Navigation("Branch");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Product", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Category", "Category")
++                        .WithMany("Products")
++                        .HasForeignKey("CategoryId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Category");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.ProductPhoto", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany("Photos")
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Product");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Pricing.BranchProductPrice", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
++                        .WithMany()
++                        .HasForeignKey("BranchId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Branch");
++
++                    b.Navigation("Product");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Pricing.BranchProductPriceHistory", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Pricing.BranchProductPrice", "BranchProductPrice")
++                        .WithMany()
++                        .HasForeignKey("BranchProductPriceId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Inventory.StockTransferLine", "StockTransferLine")
++                        .WithMany()
++                        .HasForeignKey("StockTransferLineId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.Navigation("BranchProductPrice");
++
++                    b.Navigation("StockTransferLine");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoice", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "InventoryLocation")
++                        .WithMany()
++                        .HasForeignKey("InventoryLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.Supplier", "Supplier")
++                        .WithMany()
++                        .HasForeignKey("SupplierId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("InventoryLocation");
++
++                    b.Navigation("Supplier");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoiceLine", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Purchasing.PurchaseInvoice", "PurchaseInvoice")
++                        .WithMany("Lines")
++                        .HasForeignKey("PurchaseInvoiceId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Product");
++
++                    b.Navigation("PurchaseInvoice");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.BranchExpense", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
++                        .WithMany()
++                        .HasForeignKey("BranchId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("CreatedByUserId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("EmployeeUserId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("VoidedByUserId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.Navigation("Branch");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.ManagerProfitShare", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
++                        .WithMany()
++                        .HasForeignKey("BranchId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("CreatedByUserId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("ManagerUserId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Branch");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesInvoice", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
++                        .WithMany()
++                        .HasForeignKey("BranchId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "InventoryLocation")
++                        .WithMany()
++                        .HasForeignKey("InventoryLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("ManagerUserIdSnapshot")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("ReconciledByUserId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("SoldByUserId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Branch");
++
++                    b.Navigation("InventoryLocation");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesInvoiceLine", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("PurchaseCostRecordedByUserId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.HasOne("MarketApp.Domain.Entity.Sales.SalesInvoice", "SalesInvoice")
++                        .WithMany("Lines")
++                        .HasForeignKey("SalesInvoiceId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Product");
++
++                    b.Navigation("SalesInvoice");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesReturn", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
++                        .WithMany()
++                        .HasForeignKey("BranchId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("CreatedByUserId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Sales.SalesInvoice", "SalesInvoice")
++                        .WithMany()
++                        .HasForeignKey("SalesInvoiceId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Branch");
++
++                    b.Navigation("SalesInvoice");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesReturnLine", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Sales.SalesInvoiceLine", "SalesInvoiceLine")
++                        .WithMany()
++                        .HasForeignKey("SalesInvoiceLineId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Sales.SalesReturn", "SalesReturn")
++                        .WithMany("Lines")
++                        .HasForeignKey("SalesReturnId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("SalesInvoiceLine");
++
++                    b.Navigation("SalesReturn");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.StockAdjustment", b =>
++                {
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("CreatedByUserId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "InventoryLocation")
++                        .WithMany()
++                        .HasForeignKey("InventoryLocationId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Domain.Entity.Main.Product", "Product")
++                        .WithMany()
++                        .HasForeignKey("ProductId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("InventoryLocation");
++
++                    b.Navigation("Product");
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.ApplicationUserBranch", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
++                        .WithMany()
++                        .HasForeignKey("BranchId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", "User")
++                        .WithMany("BranchAssignments")
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Branch");
++
++                    b.Navigation("User");
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.AuthSession", b =>
++                {
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", "User")
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("User");
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.RefreshToken", b =>
++                {
++                    b.HasOne("MarketApp.Infrastructure.Identity.AuthSession", "AuthSession")
++                        .WithMany("RefreshTokens")
++                        .HasForeignKey("AuthSessionId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("AuthSession");
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
++                {
++                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
++                        .WithMany()
++                        .HasForeignKey("RoleId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
++                {
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
++                {
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
++                {
++                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
++                        .WithMany()
++                        .HasForeignKey("RoleId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
++                {
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockTransfer", b =>
++                {
++                    b.Navigation("Lines");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Category", b =>
++                {
++                    b.Navigation("Products");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Main.Product", b =>
++                {
++                    b.Navigation("Photos");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Purchasing.PurchaseInvoice", b =>
++                {
++                    b.Navigation("Lines");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesInvoice", b =>
++                {
++                    b.Navigation("Lines");
++                });
++
++            modelBuilder.Entity("MarketApp.Domain.Entity.Sales.SalesReturn", b =>
++                {
++                    b.Navigation("Lines");
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.ApplicationUser", b =>
++                {
++                    b.Navigation("BranchAssignments");
++                });
++
++            modelBuilder.Entity("MarketApp.Infrastructure.Identity.AuthSession", b =>
++                {
++                    b.Navigation("RefreshTokens");
++                });
++#pragma warning restore 612, 618
++        }
++    }
++}
+diff --git a/src/MarketApp.Infrastructure/Migrations/20261009155617_AddStakeholderExpenseRegister.cs b/src/MarketApp.Infrastructure/Migrations/20261009155617_AddStakeholderExpenseRegister.cs
+new file mode 100644
+index 0000000..71a00e0
+--- /dev/null
++++ b/src/MarketApp.Infrastructure/Migrations/20261009155617_AddStakeholderExpenseRegister.cs
+@@ -0,0 +1,95 @@
++﻿using System;
++using Microsoft.EntityFrameworkCore.Migrations;
++
++#nullable disable
++
++namespace MarketApp.Infrastructure.Migrations
++{
++    /// <inheritdoc />
++    public partial class AddStakeholderExpenseRegister : Migration
++    {
++        /// <inheritdoc />
++        protected override void Up(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.CreateTable(
++                name: "StakeholderExpenses",
++                columns: table => new
++                {
++                    Id = table.Column<Guid>(type: "uuid", nullable: false),
++                    ClientExpenseId = table.Column<Guid>(type: "uuid", nullable: false),
++                    RequestHash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
++                    BranchId = table.Column<Guid>(type: "uuid", nullable: true),
++                    Category = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
++                    Amount = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false),
++                    OccurredAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
++                    Description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
++                    PaidTo = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
++                    ReferenceNumber = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
++                    CreatedByUserId = table.Column<Guid>(type: "uuid", nullable: false),
++                    CreatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
++                    VoidedByUserId = table.Column<Guid>(type: "uuid", nullable: true),
++                    VoidedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
++                    VoidReason = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
++                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
++                },
++                constraints: table =>
++                {
++                    table.PrimaryKey("PK_StakeholderExpenses", x => x.Id);
++                    table.CheckConstraint("CK_StakeholderExpenses_Amount", "\"Amount\" > 0");
++                    table.CheckConstraint("CK_StakeholderExpenses_Category", "\"Category\" IN ('Rent', 'Other')");
++                    table.CheckConstraint("CK_StakeholderExpenses_Void", "(\"VoidedAtUtc\" IS NULL AND \"VoidedByUserId\" IS NULL AND \"VoidReason\" IS NULL) OR\n(\"VoidedAtUtc\" IS NOT NULL AND \"VoidedByUserId\" IS NOT NULL AND \"VoidReason\" IS NOT NULL)");
++                    table.ForeignKey(
++                        name: "FK_StakeholderExpenses_AspNetUsers_CreatedByUserId",
++                        column: x => x.CreatedByUserId,
++                        principalTable: "AspNetUsers",
++                        principalColumn: "Id",
++                        onDelete: ReferentialAction.Restrict);
++                    table.ForeignKey(
++                        name: "FK_StakeholderExpenses_AspNetUsers_VoidedByUserId",
++                        column: x => x.VoidedByUserId,
++                        principalTable: "AspNetUsers",
++                        principalColumn: "Id",
++                        onDelete: ReferentialAction.Restrict);
++                    table.ForeignKey(
++                        name: "FK_StakeholderExpenses_Branches_BranchId",
++                        column: x => x.BranchId,
++                        principalTable: "Branches",
++                        principalColumn: "Id",
++                        onDelete: ReferentialAction.Restrict);
++                });
++
++            migrationBuilder.CreateIndex(
++                name: "IX_StakeholderExpenses_BranchId_OccurredAtUtc_Id",
++                table: "StakeholderExpenses",
++                columns: new[] { "BranchId", "OccurredAtUtc", "Id" });
++
++            migrationBuilder.CreateIndex(
++                name: "IX_StakeholderExpenses_ClientExpenseId",
++                table: "StakeholderExpenses",
++                column: "ClientExpenseId",
++                unique: true);
++
++            migrationBuilder.CreateIndex(
++                name: "IX_StakeholderExpenses_CreatedByUserId",
++                table: "StakeholderExpenses",
++                column: "CreatedByUserId");
++
++            migrationBuilder.CreateIndex(
++                name: "IX_StakeholderExpenses_OccurredAtUtc_Id",
++                table: "StakeholderExpenses",
++                columns: new[] { "OccurredAtUtc", "Id" });
++
++            migrationBuilder.CreateIndex(
++                name: "IX_StakeholderExpenses_VoidedByUserId",
++                table: "StakeholderExpenses",
++                column: "VoidedByUserId");
++        }
++
++        /// <inheritdoc />
++        protected override void Down(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.DropTable(
++                name: "StakeholderExpenses");
++        }
++    }
++}
+diff --git a/src/MarketApp.Infrastructure/Migrations/AppDbContextModelSnapshot.cs b/src/MarketApp.Infrastructure/Migrations/AppDbContextModelSnapshot.cs
+index d0c7e34..4cdbf67 100644
+--- a/src/MarketApp.Infrastructure/Migrations/AppDbContextModelSnapshot.cs
++++ b/src/MarketApp.Infrastructure/Migrations/AppDbContextModelSnapshot.cs
+@@ -22,6 +22,93 @@ namespace MarketApp.Infrastructure.Migrations
+ 
+             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+ 
++            modelBuilder.Entity("MarketApp.Domain.Entity.Accounting.StakeholderExpense", b =>
++                {
++                    b.Property<Guid>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("uuid");
++
++                    b.Property<decimal>("Amount")
++                        .HasPrecision(18, 4)
++                        .HasColumnType("numeric(18,4)");
++
++                    b.Property<Guid?>("BranchId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Category")
++                        .IsRequired()
++                        .HasMaxLength(20)
++                        .HasColumnType("character varying(20)");
++
++                    b.Property<Guid>("ClientExpenseId")
++                        .HasColumnType("uuid");
++
++                    b.Property<DateTime>("CreatedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid>("CreatedByUserId")
++                        .HasColumnType("uuid");
++
++                    b.Property<string>("Description")
++                        .IsRequired()
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<DateTime>("OccurredAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("PaidTo")
++                        .HasMaxLength(200)
++                        .HasColumnType("character varying(200)");
++
++                    b.Property<string>("ReferenceNumber")
++                        .HasMaxLength(100)
++                        .HasColumnType("character varying(100)");
++
++                    b.Property<string>("RequestHash")
++                        .IsRequired()
++                        .HasMaxLength(64)
++                        .HasColumnType("character varying(64)");
++
++                    b.Property<uint>("Version")
++                        .IsConcurrencyToken()
++                        .ValueGeneratedOnAddOrUpdate()
++                        .HasColumnType("xid")
++                        .HasColumnName("xmin");
++
++                    b.Property<string>("VoidReason")
++                        .HasMaxLength(1000)
++                        .HasColumnType("character varying(1000)");
++
++                    b.Property<DateTime?>("VoidedAtUtc")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<Guid?>("VoidedByUserId")
++                        .HasColumnType("uuid");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("ClientExpenseId")
++                        .IsUnique();
++
++                    b.HasIndex("CreatedByUserId");
++
++                    b.HasIndex("VoidedByUserId");
++
++                    b.HasIndex("OccurredAtUtc", "Id");
++
++                    b.HasIndex("BranchId", "OccurredAtUtc", "Id");
++
++                    b.ToTable("StakeholderExpenses", null, t =>
++                        {
++                            t.HasCheckConstraint("CK_StakeholderExpenses_Amount", "\"Amount\" > 0");
++
++                            t.HasCheckConstraint("CK_StakeholderExpenses_Category", "\"Category\" IN ('Rent', 'Other')");
++
++                            t.HasCheckConstraint("CK_StakeholderExpenses_Void", "(\"VoidedAtUtc\" IS NULL AND \"VoidedByUserId\" IS NULL AND \"VoidReason\" IS NULL) OR\n(\"VoidedAtUtc\" IS NOT NULL AND \"VoidedByUserId\" IS NOT NULL AND \"VoidReason\" IS NOT NULL)");
++                        });
++                });
++
+             modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockBalance", b =>
+                 {
+                     b.Property<Guid>("Id")
+@@ -1536,6 +1623,27 @@ namespace MarketApp.Infrastructure.Migrations
+                     b.ToTable("AspNetUserTokens", (string)null);
+                 });
+ 
++            modelBuilder.Entity("MarketApp.Domain.Entity.Accounting.StakeholderExpense", b =>
++                {
++                    b.HasOne("MarketApp.Domain.Entity.Main.Branch", "Branch")
++                        .WithMany()
++                        .HasForeignKey("BranchId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("CreatedByUserId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("MarketApp.Infrastructure.Identity.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("VoidedByUserId")
++                        .OnDelete(DeleteBehavior.Restrict);
++
++                    b.Navigation("Branch");
++                });
++
+             modelBuilder.Entity("MarketApp.Domain.Entity.Inventory.StockBalance", b =>
+                 {
+                     b.HasOne("MarketApp.Domain.Entity.Main.InventoryLocation", "InventoryLocation")
+diff --git a/src/MarketApp.Infrastructure/Persistence/AppDbContext.cs b/src/MarketApp.Infrastructure/Persistence/AppDbContext.cs
+index 61b7b09..268dfe1 100644
+--- a/src/MarketApp.Infrastructure/Persistence/AppDbContext.cs
++++ b/src/MarketApp.Infrastructure/Persistence/AppDbContext.cs
+@@ -23,6 +23,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
+     public DbSet<MarketApp.Domain.Entity.Sales.SalesInvoiceLine> SalesInvoiceLines => Set<MarketApp.Domain.Entity.Sales.SalesInvoiceLine>();
+     public DbSet<MarketApp.Domain.Entity.Inventory.StockCostHistory> StockCostHistories => Set<MarketApp.Domain.Entity.Inventory.StockCostHistory>();
+     public DbSet<MarketApp.Domain.Entity.Sales.BranchExpense> BranchExpenses => Set<MarketApp.Domain.Entity.Sales.BranchExpense>();
++    public DbSet<MarketApp.Domain.Entity.Accounting.StakeholderExpense> StakeholderExpenses => Set<MarketApp.Domain.Entity.Accounting.StakeholderExpense>();
+     // Add DbSet properties for your entities
+     public DbSet<Category> Categories => Set<Category>();
+ 
+diff --git a/src/MarketApp.Infrastructure/Persistence/Configurations/StakeholderExpenseConfiguration.cs b/src/MarketApp.Infrastructure/Persistence/Configurations/StakeholderExpenseConfiguration.cs
+new file mode 100644
+index 0000000..90e3cd3
+--- /dev/null
++++ b/src/MarketApp.Infrastructure/Persistence/Configurations/StakeholderExpenseConfiguration.cs
+@@ -0,0 +1,34 @@
++using MarketApp.Domain.Entity.Accounting;
++using MarketApp.Infrastructure.Identity;
++using Microsoft.EntityFrameworkCore;
++using Microsoft.EntityFrameworkCore.Metadata.Builders;
++namespace MarketApp.Infrastructure.Persistence.Configurations;
++public sealed class StakeholderExpenseConfiguration : IEntityTypeConfiguration<StakeholderExpense>
++{
++    public void Configure(EntityTypeBuilder<StakeholderExpense> b)
++    {
++        b.HasKey(x => x.Id);
++        b.Property(x => x.Amount).HasPrecision(18, 4);
++        b.Property(x => x.Version).IsRowVersion();
++        b.Property(x => x.Category).HasMaxLength(20).IsRequired();
++        b.Property(x => x.Description).HasMaxLength(1000).IsRequired();
++        b.Property(x => x.PaidTo).HasMaxLength(200);
++        b.Property(x => x.ReferenceNumber).HasMaxLength(100);
++        b.Property(x => x.VoidReason).HasMaxLength(1000);
++        b.Property(x => x.RequestHash).HasMaxLength(64).IsRequired();
++        b.HasIndex(x => x.ClientExpenseId).IsUnique();
++        b.HasIndex(x => new { x.BranchId, x.OccurredAtUtc, x.Id });
++        b.HasIndex(x => new { x.OccurredAtUtc, x.Id });
++        b.HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
++        b.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
++        b.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.VoidedByUserId).OnDelete(DeleteBehavior.Restrict);
++        b.ToTable("StakeholderExpenses", t => {
++            t.HasCheckConstraint("CK_StakeholderExpenses_Amount", "\"Amount\" > 0");
++            t.HasCheckConstraint("CK_StakeholderExpenses_Category", "\"Category\" IN ('Rent', 'Other')");
++            t.HasCheckConstraint("CK_StakeholderExpenses_Void", """
++                ("VoidedAtUtc" IS NULL AND "VoidedByUserId" IS NULL AND "VoidReason" IS NULL) OR
++                ("VoidedAtUtc" IS NOT NULL AND "VoidedByUserId" IS NOT NULL AND "VoidReason" IS NOT NULL)
++                """);
++        });
++    }
++}
+diff --git a/src/MarketApp.Infrastructure/Persistence/UnitOfWork.cs b/src/MarketApp.Infrastructure/Persistence/UnitOfWork.cs
+index 2ad6d3f..c76c86b 100644
+--- a/src/MarketApp.Infrastructure/Persistence/UnitOfWork.cs
++++ b/src/MarketApp.Infrastructure/Persistence/UnitOfWork.cs
+@@ -30,8 +30,11 @@ public class UnitOfWork : IUnitOfWork
+ 
+     public IGeneralRepository<MarketApp.Domain.Entity.Sales.BranchExpense> BranchExpenses { get; }
+ 
++    public IGeneralRepository<MarketApp.Domain.Entity.Accounting.StakeholderExpense> StakeholderExpenses { get; }
++
+     public UnitOfWork(
+         AppDbContext context,
++        IGeneralRepository<MarketApp.Domain.Entity.Accounting.StakeholderExpense> stakeholderExpenses,
+         IGeneralRepository<MarketApp.Domain.Entity.Sales.BranchExpense> branchExpenses,
+         IGeneralRepository<MarketApp.Domain.Entity.Inventory.StockCostHistory> stockCostHistories,
+         IGeneralRepository<Category> categories,
+@@ -51,6 +54,7 @@ public class UnitOfWork : IUnitOfWork
+         IGeneralRepository<MarketApp.Domain.Entity.Sales.SalesInvoice> salesInvoices)
+     {
+         _context = context;
++        StakeholderExpenses = stakeholderExpenses;
+         BranchExpenses = branchExpenses;
+         StockCostHistories = stockCostHistories;
+         Categories = categories;
+diff --git a/src/MarketApp.Infrastructure/Services/StakeholderExpenseQueries.cs b/src/MarketApp.Infrastructure/Services/StakeholderExpenseQueries.cs
+new file mode 100644
+index 0000000..1cc734a
+--- /dev/null
++++ b/src/MarketApp.Infrastructure/Services/StakeholderExpenseQueries.cs
+@@ -0,0 +1,51 @@
++using System.ComponentModel.DataAnnotations;
++using MarketApp.Application.Common.Exceptions;
++using MarketApp.Application.DTOs.Accounting;
++using MarketApp.Application.Interfaces.Services;
++using MarketApp.Application.Services;
++using MarketApp.Domain.Entity.Accounting;
++using MarketApp.Infrastructure.Persistence;
++using Microsoft.EntityFrameworkCore;
++namespace MarketApp.Infrastructure.Services;
++
++public sealed class StakeholderExpenseQueries(AppDbContext db) : IStakeholderExpenseQueries
++{
++    public async Task<StakeholderExpenseDto> GetAsync(Guid expenseId, CancellationToken ct)
++    {
++        var expense = await db.StakeholderExpenses.AsNoTracking().Include(e => e.Branch)
++            .SingleOrDefaultAsync(e => e.Id == expenseId, ct) ?? throw new RequestException(404, "Stakeholder expense not found.");
++        return StakeholderExpenseService.ToDto(expense);
++    }
++    public async Task<StakeholderExpensePageDto> ListAsync(StakeholderExpenseQuery query, CancellationToken ct)
++    {
++        var errors = new List<ValidationResult>();
++        if (!Validator.TryValidateObject(query, new ValidationContext(query), errors, true))
++            throw new RequestException(400, string.Join(" ", errors.Select(e => e.ErrorMessage)));
++        if (query.FromUtc is DateTime from && from.Kind != DateTimeKind.Utc ||
++            query.ToUtc is DateTime to && to.Kind != DateTimeKind.Utc ||
++            query.FromUtc.HasValue && query.ToUtc.HasValue && query.FromUtc >= query.ToUtc)
++            throw new RequestException(400, "Use UTC dates (Z), with FromUtc before ToUtc; the end date is exclusive.");
++        if (query.BranchId == Guid.Empty) throw new RequestException(400, "BranchId must be a valid identifier or omitted.");
++        await using var snapshot = await db.Database.BeginTransactionAsync(db.Database.IsNpgsql()
++            ? System.Data.IsolationLevel.RepeatableRead : System.Data.IsolationLevel.Serializable, ct);
++        if (query.BranchId is Guid branch && !await db.Branches.AnyAsync(b => b.Id == branch, ct))
++            throw new RequestException(404, "Branch not found.");
++        IQueryable<StakeholderExpense> q = db.StakeholderExpenses.AsNoTracking();
++        if (query.BranchId.HasValue) q = q.Where(e => e.BranchId == query.BranchId);
++        if (!string.IsNullOrEmpty(query.Category)) q = q.Where(e => e.Category == query.Category);
++        if (query.FromUtc.HasValue) q = q.Where(e => e.OccurredAtUtc >= query.FromUtc);
++        if (query.ToUtc.HasValue) q = q.Where(e => e.OccurredAtUtc < query.ToUtc);
++        if (!query.IncludeVoided) q = q.Where(e => e.VoidedAtUtc == null);
++        var search = query.Search?.Trim();
++        if (!string.IsNullOrEmpty(search)) q = q.Where(e => e.Description.Contains(search) ||
++            (e.PaidTo != null && e.PaidTo.Contains(search)) || (e.ReferenceNumber != null && e.ReferenceNumber.Contains(search)));
++        var count = await q.CountAsync(ct);
++        decimal activeAmount = 0;
++        // Total covers the whole filtered register, not only the displayed page. Voids never contribute.
++        await foreach (var amount in q.Where(e => e.VoidedAtUtc == null).Select(e => e.Amount)
++            .AsAsyncEnumerable().WithCancellation(ct)) activeAmount += amount;
++        var items = await q.OrderByDescending(e => e.OccurredAtUtc).ThenBy(e => e.Id)
++            .Skip((query.PageNumber - 1) * query.PageSize).Take(query.PageSize).Include(e => e.Branch).ToListAsync(ct);
++        return new(items.Select(StakeholderExpenseService.ToDto).ToList(), count, query.PageNumber, query.PageSize, activeAmount);
++    }
++}
+diff --git a/tests/MarketApp.Api.Tests/SalesApiTests.cs b/tests/MarketApp.Api.Tests/SalesApiTests.cs
+index ac21b3f..bf2ab28 100644
+--- a/tests/MarketApp.Api.Tests/SalesApiTests.cs
++++ b/tests/MarketApp.Api.Tests/SalesApiTests.cs
+@@ -119,6 +119,8 @@ public sealed partial class SalesApiTests : IDisposable
+             services.AddScoped(typeof(IGeneralRepository<>), typeof(GeneralRepository<>));
+             services.AddScoped<IUnitOfWork, UnitOfWork>();
+             services.AddScoped<ISalesService, SalesService>();
++            services.AddScoped<IStakeholderExpenseService, StakeholderExpenseService>();
++            services.AddScoped<IStakeholderExpenseQueries, StakeholderExpenseQueries>();
+             services.AddScoped<IAccountingService, AccountingService>();
+             services.AddScoped<IPurchaseInvoiceService, PurchaseInvoiceService>();
+             services.AddScoped<IStockTransferService, StockTransferService>();
+diff --git a/tests/MarketApp.Api.Tests/StakeholderExpenseApiTests.cs b/tests/MarketApp.Api.Tests/StakeholderExpenseApiTests.cs
+new file mode 100644
+index 0000000..ae2a4f4
+--- /dev/null
++++ b/tests/MarketApp.Api.Tests/StakeholderExpenseApiTests.cs
+@@ -0,0 +1,164 @@
++using System.Net;
++using System.Net.Http.Json;
++using MarketApp.Application.Common.Security;
++using MarketApp.Application.DTOs.Accounting;
++using Microsoft.EntityFrameworkCore;
++namespace MarketApp.Api.Tests;
++public sealed partial class SalesApiTests
++{
++    private const string StakeholderExpensesUrl = "/api/stakeholder-expenses";
++    private CreateStakeholderExpenseDto StakeholderExpense(decimal amount = 500) => new()
++    {
++        ClientExpenseId = Guid.NewGuid(), BranchId = _branch, Category = "Rent", Amount = amount,
++        OccurredAtUtc = DateTime.UtcNow, Description = "October branch premises rent", PaidTo = "Landlord", ReferenceNumber = "RENT-001"
++    };
++    private async Task<StakeholderExpenseDto> PostStakeholderExpense(CreateStakeholderExpenseDto request)
++    {
++        var response = await _client.PostAsJsonAsync(StakeholderExpensesUrl, request);
++        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
++        return (await response.Content.ReadFromJsonAsync<StakeholderExpenseDto>())!;
++    }
++    private async Task<StakeholderExpensePageDto> StakeholderExpenseList(string query = "")
++    {
++        var response = await _client.GetAsync(StakeholderExpensesUrl + query);
++        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
++        return (await response.Content.ReadFromJsonAsync<StakeholderExpensePageDto>())!;
++    }
++    [Fact]
++    public async Task Stakeholder_rent_is_independent_of_both_profits_and_branch_salary_expenses()
++    {
++        await Post(); Role(AppRoles.BranchManager, _manager); await PostExpense(Expense(100));
++        var from = DateTime.UtcNow.Date; var to = from.AddDays(1);
++        var beforeBranch = await Report(from, to);
++        Role(AppRoles.Stakeholder, _owner); var beforeOwner = await OwnerProfit();
++        var rent = await PostStakeholderExpense(StakeholderExpense());
++        Assert.Equal("Main", rent.BranchName); Assert.Equal(_owner, rent.CreatedByUserId);
++        Assert.Equal(500, (await StakeholderExpenseList()).ActiveAmount);
++        var branch = await Report(from, to); var owner = await OwnerProfit();
++        Assert.Equal(beforeBranch, branch); Assert.Equal(140, branch.GrossProfit); Assert.Equal(40, branch.NetProfit);
++        Assert.Equal(beforeOwner.GrossProfit, owner.GrossProfit); Assert.Equal(40, owner.GrossProfit);
++        Assert.Equal(beforeOwner.NetPurchaseCost, owner.NetPurchaseCost);
++        Assert.Equal(HttpStatusCode.OK, (await _client.PostAsJsonAsync(StakeholderExpensesUrl + $"/{rent.Id}/void",
++            new VoidStakeholderExpenseDto { Reason = "Correcting expense register" })).StatusCode);
++        Assert.Equal(beforeBranch, await Report(from, to)); Assert.Equal(beforeOwner.GrossProfit, (await OwnerProfit()).GrossProfit);
++        await using var db = NewDb(); Assert.Single(await db.BranchExpenses.ToListAsync()); Assert.Single(await db.StakeholderExpenses.ToListAsync());
++        Assert.Equal(8, (await db.StockBalances.SingleAsync()).Quantity);
++    }
++    [Fact]
++    public async Task Stakeholder_expense_exact_retry_and_changed_payload_preserve_one_record()
++    {
++        Role(AppRoles.Stakeholder, _owner); var request = StakeholderExpense();
++        var saved = await PostStakeholderExpense(request); var replay = await PostStakeholderExpense(request); Assert.Equal(saved, replay);
++        request.Amount = 600;
++        Assert.Equal(HttpStatusCode.Conflict, (await _client.PostAsJsonAsync(StakeholderExpensesUrl, request)).StatusCode);
++        request.Amount = 500; request.BranchId = _otherBranch;
++        Assert.Equal(HttpStatusCode.Conflict, (await _client.PostAsJsonAsync(StakeholderExpensesUrl, request)).StatusCode);
++        await using var db = NewDb(); Assert.Single(await db.StakeholderExpenses.ToListAsync());
++        Assert.Equal(500, (await StakeholderExpenseList()).ActiveAmount);
++    }
++    [Fact]
++    public async Task Stakeholder_expense_register_supports_general_and_historical_branch_expenses()
++    {
++        Role(AppRoles.Stakeholder, _owner); var general = StakeholderExpense(25); general.BranchId = null; general.Category = "Other";
++        general.Description = "General administrative cost";
++        var saved = await PostStakeholderExpense(general); Assert.Null(saved.BranchId); Assert.Null(saved.BranchName);
++        await using (var db = NewDb()) { (await db.Branches.SingleAsync(b => b.Id == _branch)).IsActive = false; await db.SaveChangesAsync(); }
++        var old = StakeholderExpense(); old.OccurredAtUtc = DateTime.UtcNow.AddMonths(-1);
++        Assert.Equal(_branch, (await PostStakeholderExpense(old)).BranchId);
++        Assert.Equal(525, (await StakeholderExpenseList()).ActiveAmount);
++    }
++    [Fact]
++    public async Task Stakeholder_expense_filters_paging_and_date_boundaries_have_full_filtered_totals()
++    {
++        Role(AppRoles.Stakeholder, _owner);
++        var start = DateTime.UtcNow.Date.AddDays(-2); var end = start.AddDays(1);
++        var first = StakeholderExpense(100); first.OccurredAtUtc = start;
++        var second = StakeholderExpense(200); second.OccurredAtUtc = start.AddHours(1); second.BranchId = _otherBranch;
++        var third = StakeholderExpense(300); third.OccurredAtUtc = end;
++        var general = StakeholderExpense(25); general.OccurredAtUtc = start; general.Category = "Other"; general.BranchId = null;
++        general.PaidTo = "Office supplier"; general.ReferenceNumber = "REF-GENERAL"; general.Description = "General purchase";
++        foreach (var request in new[] { first, second, third, general }) await PostStakeholderExpense(request);
++        var q = $"?fromUtc={Uri.EscapeDataString(start.ToString("O"))}&toUtc={Uri.EscapeDataString(end.ToString("O"))}&category=Rent&pageSize=1";
++        var page = await StakeholderExpenseList(q); Assert.Single(page.Items); Assert.Equal(2, page.TotalCount);
++        Assert.Equal(300, page.ActiveAmount); Assert.Equal(2, page.TotalPages); Assert.True(page.HasNextPage);
++        var next = await StakeholderExpenseList(q + "&pageNumber=2"); Assert.Equal(300, next.ActiveAmount); Assert.NotEqual(page.Items[0].Id, next.Items[0].Id);
++        var branch = await StakeholderExpenseList(q + $"&branchId={_branch}"); Assert.Equal(100, branch.ActiveAmount); Assert.Equal(1, branch.TotalCount);
++        Assert.Equal(25, (await StakeholderExpenseList("?search=REF-GENERAL")).ActiveAmount);
++        Assert.Equal(25, (await StakeholderExpenseList("?search=Office")).ActiveAmount);
++        Assert.Equal(25, (await StakeholderExpenseList("?search=General")).ActiveAmount);
++    }
++    [Theory]
++    [InlineData("Seller")]
++    [InlineData("BranchManager")]
++    public async Task Stakeholder_expense_routes_reject_sellers_and_managers(string role)
++    {
++        Role(AppRoles.Stakeholder, _owner); var saved = await PostStakeholderExpense(StakeholderExpense());
++        Role(role, role == AppRoles.Seller ? _seller : _manager);
++        Assert.Equal(HttpStatusCode.Forbidden, (await _client.GetAsync(StakeholderExpensesUrl)).StatusCode);
++        Assert.Equal(HttpStatusCode.Forbidden, (await _client.GetAsync(StakeholderExpensesUrl + "/" + saved.Id)).StatusCode);
++        Assert.Equal(HttpStatusCode.Forbidden, (await _client.PostAsJsonAsync(StakeholderExpensesUrl, StakeholderExpense())).StatusCode);
++        Assert.Equal(HttpStatusCode.Forbidden, (await _client.PostAsJsonAsync(StakeholderExpensesUrl + $"/{saved.Id}/void", new VoidStakeholderExpenseDto { Reason = "Unauthorized attempt" })).StatusCode);
++        _client.DefaultRequestHeaders.Remove("X-Test-Role");
++        Assert.Equal(HttpStatusCode.Unauthorized, (await _client.GetAsync(StakeholderExpensesUrl)).StatusCode);
++    }
++    [Fact]
++    public async Task Stakeholder_expense_void_keeps_audit_and_excludes_only_register_total()
++    {
++        Role(AppRoles.Stakeholder, _owner); var request = StakeholderExpense(); var saved = await PostStakeholderExpense(request);
++        var url = StakeholderExpensesUrl + $"/{saved.Id}/void"; var reason = new VoidStakeholderExpenseDto { Reason = "Duplicate receipt" };
++        Assert.Equal(HttpStatusCode.BadRequest, (await _client.PostAsJsonAsync(url, new VoidStakeholderExpenseDto { Reason = "   " })).StatusCode);
++        Assert.Equal(HttpStatusCode.OK, (await _client.PostAsJsonAsync(url, reason)).StatusCode);
++        Assert.Equal(HttpStatusCode.OK, (await _client.PostAsJsonAsync(url, reason)).StatusCode);
++        Assert.Equal(HttpStatusCode.Conflict, (await _client.PostAsJsonAsync(url, new VoidStakeholderExpenseDto { Reason = "Different reason" })).StatusCode);
++        Assert.Empty((await StakeholderExpenseList()).Items);
++        var audit = await StakeholderExpenseList("?includeVoided=true"); Assert.Equal(0, audit.ActiveAmount);
++        var entry = Assert.Single(audit.Items); Assert.Equal(_owner, entry.VoidedByUserId); Assert.NotNull(entry.VoidedAtUtc); Assert.Equal(reason.Reason, entry.VoidReason);
++        var read = await _client.GetFromJsonAsync<StakeholderExpenseDto>(StakeholderExpensesUrl + "/" + entry.Id); Assert.Equal(entry, read);
++        Assert.NotNull((await PostStakeholderExpense(request)).VoidedAtUtc);
++        Assert.Equal(0, (await StakeholderExpenseList()).ActiveAmount);
++    }
++    [Theory]
++    [InlineData(0)] [InlineData(-1)] [InlineData(1.00001)]
++    public async Task Stakeholder_expense_invalid_amount_is_rejected(decimal amount)
++    {
++        Role(AppRoles.Stakeholder, _owner);
++        Assert.Equal(HttpStatusCode.BadRequest, (await _client.PostAsJsonAsync(StakeholderExpensesUrl, StakeholderExpense(amount))).StatusCode);
++        Assert.Empty((await StakeholderExpenseList()).Items);
++    }
++    [Fact]
++    public async Task Stakeholder_expense_validates_category_branch_identifiers_and_dates()
++    {
++        Role(AppRoles.Stakeholder, _owner);
++        var invalid = new List<CreateStakeholderExpenseDto>();
++        var r = StakeholderExpense(); r.Category = "Salary"; invalid.Add(r);
++        r = StakeholderExpense(); r.BranchId = Guid.Empty; invalid.Add(r);
++        r = StakeholderExpense(); r.ClientExpenseId = Guid.Empty; invalid.Add(r);
++        r = StakeholderExpense(); r.OccurredAtUtc = DateTime.UtcNow.AddDays(1); invalid.Add(r);
++        r = StakeholderExpense(); r.OccurredAtUtc = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified); invalid.Add(r);
++        r = StakeholderExpense(); r.Description = "   "; invalid.Add(r);
++        r = StakeholderExpense(); r.PaidTo = new string('x', 201); invalid.Add(r);
++        foreach (var request in invalid) Assert.Equal(HttpStatusCode.BadRequest, (await _client.PostAsJsonAsync(StakeholderExpensesUrl, request)).StatusCode);
++        r = StakeholderExpense(); r.BranchId = Guid.NewGuid();
++        Assert.Equal(HttpStatusCode.NotFound, (await _client.PostAsJsonAsync(StakeholderExpensesUrl, r)).StatusCode);
++        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync(StakeholderExpensesUrl + "/" + Guid.NewGuid())).StatusCode);
++        Assert.Equal(HttpStatusCode.NotFound, (await _client.PostAsJsonAsync(StakeholderExpensesUrl + $"/{Guid.NewGuid()}/void", new VoidStakeholderExpenseDto { Reason = "Missing record" })).StatusCode);
++        Assert.Empty((await StakeholderExpenseList()).Items);
++    }
++    [Theory]
++    [InlineData("?pageSize=101")]
++    [InlineData("?pageNumber=0")]
++    [InlineData("?category=Salary")]
++    [InlineData("?fromUtc=2026-10-02T00:00:00Z&toUtc=2026-10-01T00:00:00Z")]
++    public async Task Stakeholder_expense_invalid_query_is_rejected(string query)
++    {
++        Role(AppRoles.Stakeholder, _owner);
++        Assert.Equal(HttpStatusCode.BadRequest, (await _client.GetAsync(StakeholderExpensesUrl + query)).StatusCode);
++    }
++    [Fact]
++    public async Task New_rent_must_not_be_recorded_as_a_branch_profit_expense()
++    {
++        Role(AppRoles.Stakeholder, _owner); var request = Expense(500); request.Category = "Rent"; request.EmployeeUserId = null;
++        Assert.Equal(HttpStatusCode.BadRequest, (await _client.PostAsJsonAsync(Base + "/expenses", request)).StatusCode);
++        await using var db = NewDb(); Assert.Empty(await db.BranchExpenses.ToListAsync());
++    }
++}
+diff --git a/tests/MarketApp.Application.Tests/FakeUnitOfWork.cs b/tests/MarketApp.Application.Tests/FakeUnitOfWork.cs
+index 4fc1319..6f21ee0 100644
+--- a/tests/MarketApp.Application.Tests/FakeUnitOfWork.cs
++++ b/tests/MarketApp.Application.Tests/FakeUnitOfWork.cs
+@@ -14,6 +14,7 @@ internal sealed class FakeUnitOfWork : IUnitOfWork
+     private readonly Dictionary<Type, object> _repositories = [];
+     public IGeneralRepository<MarketApp.Domain.Entity.Inventory.StockCostHistory> StockCostHistories => Repo<MarketApp.Domain.Entity.Inventory.StockCostHistory>();
+     public IGeneralRepository<MarketApp.Domain.Entity.Sales.BranchExpense> BranchExpenses => Repo<MarketApp.Domain.Entity.Sales.BranchExpense>();
++    public IGeneralRepository<MarketApp.Domain.Entity.Accounting.StakeholderExpense> StakeholderExpenses => Repo<MarketApp.Domain.Entity.Accounting.StakeholderExpense>();
+     public int SaveCount { get; private set; }
+ 
+     public FakeRepository<T> Repo<T>() where T : class

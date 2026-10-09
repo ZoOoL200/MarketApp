@@ -119,6 +119,8 @@ public sealed partial class SalesApiTests : IDisposable
             services.AddScoped(typeof(IGeneralRepository<>), typeof(GeneralRepository<>));
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<ISalesService, SalesService>();
+            services.AddScoped<IStakeholderExpenseService, StakeholderExpenseService>();
+            services.AddScoped<IStakeholderExpenseQueries, StakeholderExpenseQueries>();
             services.AddScoped<IAccountingService, AccountingService>();
             services.AddScoped<IPurchaseInvoiceService, PurchaseInvoiceService>();
             services.AddScoped<IStockTransferService, StockTransferService>();

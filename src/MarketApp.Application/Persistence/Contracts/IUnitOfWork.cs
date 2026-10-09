@@ -25,6 +25,7 @@ public interface IUnitOfWork
     IGeneralRepository<MarketApp.Domain.Entity.Sales.SalesInvoice> SalesInvoices { get; }
     IGeneralRepository<MarketApp.Domain.Entity.Inventory.StockCostHistory> StockCostHistories { get; }
     IGeneralRepository<MarketApp.Domain.Entity.Sales.BranchExpense> BranchExpenses { get; }
+    IGeneralRepository<MarketApp.Domain.Entity.Accounting.StakeholderExpense> StakeholderExpenses { get; }
     Task<IUnitOfWorkTransaction> BeginSerializableAsync(CancellationToken ct = default);
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);

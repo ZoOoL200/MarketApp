@@ -1,0 +1,97 @@
+# Use MarketApp_Test. Send requests individually and compare profits before/after.
+@baseUrl = https://localhost:7126
+@stakeholderToken = REPLACE_STAKEHOLDER_TOKEN
+@managerToken = REPLACE_MANAGER_TOKEN
+@sellerToken = REPLACE_SELLER_TOKEN
+@branchId = REPLACE_BRANCH_ID
+@expenseId = REPLACE_AFTER_CREATING_EXPENSE
+@occurredAtUtc = REPLACE_EXPENSE_DATE_UTC_Z
+@fromUtc = REPLACE_START_UTC_Z
+@toUtc = REPLACE_END_UTC_Z
+
+### 1. Record branch profit before rent. Re-run after step3: profit must be unchanged.
+GET {{baseUrl}}/api/branches/{{branchId}}/reports/profit?fromUtc={{fromUtc}}&toUtc={{toUtc}}
+Authorization: Bearer {{stakeholderToken}}
+
+### 2. Record stakeholder profit before rent. Re-run after step3: profit must be unchanged.
+GET {{baseUrl}}/api/reports/stakeholder-profit?branchId={{branchId}}&fromUtc={{fromUtc}}&toUtc={{toUtc}}
+Authorization: Bearer {{stakeholderToken}}
+
+### 3. Record stakeholder rent. Expected200; copy returned id to expenseId.
+# Optional branch reference describes the expense; it does not charge the branch manager.
+# Use a new clientExpenseId per NEW entry. Exact retries return the existing entry.
+POST {{baseUrl}}/api/stakeholder-expenses
+Authorization: Bearer {{stakeholderToken}}
+Content-Type: application/json
+
+{
+  "clientExpenseId": "d5000000-0000-4000-8000-000000000001",
+  "branchId": "{{branchId}}",
+  "category": "Rent",
+  "amount": 500,
+  "occurredAtUtc": "{{occurredAtUtc}}",
+  "description": "Branch rent for October 2026",
+  "paidTo": "Landlord name",
+  "referenceNumber": "RENT-2026-10"
+}
+
+### 4. Read the register. activeAmount is independent spending across all filtered pages.
+GET {{baseUrl}}/api/stakeholder-expenses?pageNumber=1&pageSize=25
+Authorization: Bearer {{stakeholderToken}}
+
+### 5. Filter by branch/category/date. Start inclusive, end exclusive.
+GET {{baseUrl}}/api/stakeholder-expenses?branchId={{branchId}}&category=Rent&fromUtc={{fromUtc}}&toUtc={{toUtc}}
+Authorization: Bearer {{stakeholderToken}}
+
+### 6. Optional general stakeholder expense, not tied to a branch.
+POST {{baseUrl}}/api/stakeholder-expenses
+Authorization: Bearer {{stakeholderToken}}
+Content-Type: application/json
+
+{
+  "clientExpenseId": "d5000000-0000-4000-8000-000000000002",
+  "branchId": null,
+  "category": "Other",
+  "amount": 25,
+  "occurredAtUtc": "{{occurredAtUtc}}",
+  "description": "General administrative expense",
+  "paidTo": "Supplier name",
+  "referenceNumber": "ADMIN-001"
+}
+
+### 7. Read an entry, including its void audit if applicable.
+GET {{baseUrl}}/api/stakeholder-expenses/{{expenseId}}
+Authorization: Bearer {{stakeholderToken}}
+
+### 8. Manager cannot read this register. Expected403.
+GET {{baseUrl}}/api/stakeholder-expenses
+Authorization: Bearer {{managerToken}}
+
+### 9. Seller cannot read this register. Expected403.
+GET {{baseUrl}}/api/stakeholder-expenses
+Authorization: Bearer {{sellerToken}}
+
+### 10. Optional correction: void an incorrect/test entry; both profit reports remain unchanged.
+# For replacement, create a NEW entry with a NEW clientExpenseId.
+POST {{baseUrl}}/api/stakeholder-expenses/{{expenseId}}/void
+Authorization: Bearer {{stakeholderToken}}
+Content-Type: application/json
+
+{ "reason": "Voiding test rent after verification" }
+
+### 11. Audit view includes voids. activeAmount still excludes voided entries.
+GET {{baseUrl}}/api/stakeholder-expenses?includeVoided=true
+Authorization: Bearer {{stakeholderToken}}
+
+### 12. New rent in branch expenses is rejected. Expected400.
+POST {{baseUrl}}/api/branches/{{branchId}}/expenses
+Authorization: Bearer {{stakeholderToken}}
+Content-Type: application/json
+
+{
+  "clientExpenseId": "d5000000-0000-4000-8000-000000000003",
+  "category": "Rent",
+  "amount": 500,
+  "occurredAtUtc": "{{occurredAtUtc}}",
+  "description": "Must be entered in stakeholder expenses instead"
+}

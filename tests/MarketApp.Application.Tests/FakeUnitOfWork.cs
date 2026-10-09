@@ -14,6 +14,7 @@ internal sealed class FakeUnitOfWork : IUnitOfWork
     private readonly Dictionary<Type, object> _repositories = [];
     public IGeneralRepository<MarketApp.Domain.Entity.Inventory.StockCostHistory> StockCostHistories => Repo<MarketApp.Domain.Entity.Inventory.StockCostHistory>();
     public IGeneralRepository<MarketApp.Domain.Entity.Sales.BranchExpense> BranchExpenses => Repo<MarketApp.Domain.Entity.Sales.BranchExpense>();
+    public IGeneralRepository<MarketApp.Domain.Entity.Accounting.StakeholderExpense> StakeholderExpenses => Repo<MarketApp.Domain.Entity.Accounting.StakeholderExpense>();
     public int SaveCount { get; private set; }
 
     public FakeRepository<T> Repo<T>() where T : class

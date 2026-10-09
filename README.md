@@ -1,6 +1,6 @@
 # MarketApp API — Batch 1 sales
 
-This project includes Batches 1–3 plus corrected sale-cost snapshots, stakeholder/branch profit reports, branch expenses, and accepted-return rules. Start with [the profit update](docs/profit-accounting-update.md) and [the current API usage guide](docs/api/usage-guide.md). Batch-specific documents describe their original delivery; percentage profit sharing and damaged returns described in earlier batches are superseded by this update.
+This project includes Batches 1–3 plus corrected sale-cost snapshots, stakeholder/branch profit reports, branch expenses, and accepted-return rules. Stakeholder rent and other spending now have a [standalone expense register](docs/stakeholder-expenses-update.md) with no profit deduction. Start with [the profit update](docs/profit-accounting-update.md) and [the current API usage guide](docs/api/usage-guide.md). Batch-specific documents describe their original delivery; percentage profit sharing and damaged returns described in earlier batches are superseded by this update.
 
 Apply `marketapp-batch1-sales.patch` to your existing solution using the accompanying `Apply-Batch1.bat`. The script must be beside `MarketApp.sln`. It checks the patch before applying it and stops if your local files conflict. It does not migrate the database.
 

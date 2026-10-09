@@ -30,8 +30,11 @@ public class UnitOfWork : IUnitOfWork
 
     public IGeneralRepository<MarketApp.Domain.Entity.Sales.BranchExpense> BranchExpenses { get; }
 
+    public IGeneralRepository<MarketApp.Domain.Entity.Accounting.StakeholderExpense> StakeholderExpenses { get; }
+
     public UnitOfWork(
         AppDbContext context,
+        IGeneralRepository<MarketApp.Domain.Entity.Accounting.StakeholderExpense> stakeholderExpenses,
         IGeneralRepository<MarketApp.Domain.Entity.Sales.BranchExpense> branchExpenses,
         IGeneralRepository<MarketApp.Domain.Entity.Inventory.StockCostHistory> stockCostHistories,
         IGeneralRepository<Category> categories,
@@ -51,6 +54,7 @@ public class UnitOfWork : IUnitOfWork
         IGeneralRepository<MarketApp.Domain.Entity.Sales.SalesInvoice> salesInvoices)
     {
         _context = context;
+        StakeholderExpenses = stakeholderExpenses;
         BranchExpenses = branchExpenses;
         StockCostHistories = stockCostHistories;
         Categories = categories;

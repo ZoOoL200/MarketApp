@@ -81,6 +81,7 @@ public sealed class AccountingService(IUnitOfWork work, ISalesQueries sales) : I
         await using var transaction = await work.BeginSerializableAsync(ct);
         var previous = await work.BranchExpenses.FindAsync(e => e.BranchId == branchId && e.ClientExpenseId == request.ClientExpenseId, cancellationToken: ct);
         if (previous is not null) { Replay(previous.RequestHash, hash); return ToDto(previous); }
+        if (request.Category == "Rent") throw new RequestException(400, "Record rent in /api/stakeholder-expenses. Rent does not belong to branch profit expenses.");
         if (!await work.Branches.AnyAsync(b => b.Id == branchId && b.IsActive, ct)) throw new ConflictException("Branch is missing or inactive.");
         if (request.EmployeeUserId is Guid employee && !await sales.IsAssignedUserAsync(branchId, employee, AppRoles.Seller, ct))
             throw new RequestException(400, "Employee must be an active seller assigned to this branch. For a historical or grouped expense, omit EmployeeUserId and describe it.");
