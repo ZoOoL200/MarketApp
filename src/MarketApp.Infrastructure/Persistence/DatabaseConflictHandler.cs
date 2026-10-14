@@ -10,7 +10,17 @@ public sealed class DatabaseConflictHandler : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
     {
-        var cause = exception as PostgresException ?? exception.InnerException as PostgresException;
+        // EF/Npgsql may wrap a serialization failure in both DbUpdateException
+        // and InvalidOperationException. Inspect the entire inner-exception chain.
+        PostgresException? cause = null;
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PostgresException postgres)
+            {
+                cause = postgres;
+                break;
+            }
+        }
         if (cause?.SqlState is not ("40001" or "40P01" or "23505" or "23503")) return false;
         context.Response.StatusCode = 409;
         await context.Response.WriteAsJsonAsync(new ProblemDetails

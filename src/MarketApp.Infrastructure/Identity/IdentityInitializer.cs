@@ -126,6 +126,113 @@ public class IdentityInitializer
             + "stakeholder account were created.";
     }
 
+    public async Task<string> InitializeSystemAdminAsync(
+    CancellationToken cancellationToken = default)
+    {
+        await using var transaction =
+            await _context.Database.BeginTransactionAsync(cancellationToken);
+
+        // Create the role if it does not exist.
+        // Ensure both roles exist, including on a new database.
+        string[] requiredRoles =
+        [
+            AppRoles.SystemAdmin,
+            AppRoles.Stakeholder
+        ];
+
+        foreach (var roleName in requiredRoles)
+        {
+            if (await _roleManager.RoleExistsAsync(roleName))
+            {
+                continue;
+            }
+
+            var role = new IdentityRole<Guid>
+            {
+                Id = Guid.NewGuid(),
+                Name = roleName
+            };
+
+            EnsureSuccess(
+                await _roleManager.CreateAsync(role),
+                $"Creating role '{roleName}'");
+        }
+
+        // Initialization creates only the first administrator.
+        var administrators =
+            await _userManager.GetUsersInRoleAsync(AppRoles.SystemAdmin);
+
+        if (administrators.Count > 0)
+        {
+            await transaction.CommitAsync(cancellationToken);
+
+            return "A SystemAdmin account already exists. "
+                + "No account or password was changed.";
+        }
+
+        string ReadSetting(string name)
+        {
+            var value = _configuration[$"BootstrapSystemAdmin:{name}"];
+
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                throw new InvalidOperationException(
+                    $"Missing configuration: BootstrapSystemAdmin:{name}.");
+            }
+
+            return value;
+        }
+
+        var userName = ReadSetting("UserName").Trim();
+        var fullName = ReadSetting("FullName").Trim();
+        var email = ReadSetting("Email").Trim();
+
+        // Preserve the password exactly as configured.
+        var password = ReadSetting("Password");
+
+        if (userName.Length > 256 ||
+            email.Length > 256 ||
+            fullName.Length > 150)
+        {
+            throw new InvalidOperationException(
+                "Username and email must not exceed 256 characters. "
+                + "Full name must not exceed 150 characters.");
+        }
+
+        var existingUser = await _userManager.FindByNameAsync(userName);
+        var existingEmail = await _userManager.FindByEmailAsync(email);
+
+        if (existingUser is not null || existingEmail is not null)
+        {
+            throw new InvalidOperationException(
+                "The configured username or email already belongs to an account. "
+                + "Use a unique username and email for the administrator.");
+        }
+
+        var administrator = new ApplicationUser
+        {
+            UserName = userName,
+            FullName = fullName,
+            Email = email,
+            IsActive = true,
+            EmailConfirmed = false,
+            LockoutEnabled = true
+        };
+
+        EnsureSuccess(
+            await _userManager.CreateAsync(administrator, password),
+            "Creating SystemAdmin account");
+
+        EnsureSuccess(
+            await _userManager.AddToRoleAsync(
+                administrator,
+                AppRoles.SystemAdmin),
+            "Assigning SystemAdmin role");
+
+        await transaction.CommitAsync(cancellationToken);
+
+        return "The first SystemAdmin account was created successfully.";
+    }
     private string GetRequiredSetting(string name)
     {
         var value = _configuration[$"BootstrapStakeholder:{name}"];

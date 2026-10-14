@@ -27,6 +27,14 @@ Content-Type: application/json
   "password": "abababab"
 }
 
+### Administrator login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "userName": "systemadmin",
+  "password": "izxp6709"
+}
 
 
 ### Current user

@@ -78,6 +78,26 @@ if (app.Environment.IsDevelopment())
     app.MapGet("/debug/errors/unexpected", ThrowTestUnexpected);
 }
 
+if (app.Configuration.GetValue<bool>("InitializeSystemAdmin"))
+{
+    if (!app.Environment.IsDevelopment())
+    {
+        throw new InvalidOperationException(
+            "Administrator initialization is restricted to Development.");
+    }
+
+    await using var scope = app.Services.CreateAsyncScope();
+
+    var initializer =
+        scope.ServiceProvider.GetRequiredService<IdentityInitializer>();
+
+    var message = await initializer.InitializeSystemAdminAsync();
+
+    Console.WriteLine(message);
+
+    return;
+}
+
 if (app.Configuration.GetValue<bool>("InitializeIdentity"))
 {
     if (!app.Environment.IsDevelopment())

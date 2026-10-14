@@ -1,0 +1,213 @@
+diff --git a/docs/postgres-test-fixes.md b/docs/postgres-test-fixes.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..786f5f67dbe25461ac35ee1e19c55bbfe9c6c9a1
+--- /dev/null
++++ b/docs/postgres-test-fixes.md
+@@ -0,0 +1,56 @@
++# PostgreSQL test fixes
++
++Applies to commit `25833c922583354c0960c9f4a21f55b551f35874` on
++`Test_chatgpt_finished_project`, including the stakeholder-expense reconciliation migration.
++
++## Report and changes
++
++The supplied API-only TRX report contains 91 tests: 88 passed and three failed.
++The earlier whole-solution run contained 122 tests: 119 passed and three failed.
++
++- Concurrent sales and returns each produced one successful response and one HTTP 500,
++  while the tests expected the rejected request to return HTTP 409. The existing
++  handler inspected only one inner exception. The fix inspects the complete inner
++  chain for the same four PostgreSQL conflict codes; unrelated errors remain errors.
++- The stakeholder-expense retry returned the same expense ID but failed whole-DTO
++  equality. PostgreSQL stores microseconds; .NET DateTime can contain finer ticks.
++  Expense occurrence, creation and void dates now use microsecond precision before
++  persistence. The original request remains unchanged for replay hashing.
++- Eight handler regression cases are added. Expense tests now force a finer-than-
++  microsecond date and compare creation, retry, read and void responses.
++
++The TRX does not contain the server exception chain or full fractional timestamp
++values. These source defects are consistent with the failures; the PostgreSQL
++rerun below must confirm the diagnosis. The patch does not relax the existing
++concurrency assertions or bypass transaction checks.
++
++No database migration, configuration change or data correction is required.
++
++## Apply in Visual Studio Terminal (PowerShell)
++
++Stop the running API. Put `marketapp-postgres-test-fixes.patch` beside `MarketApp.sln`.
++Run each command separately; continue only if the previous command succeeds.
++
++```powershell
++git apply --check .\marketapp-postgres-test-fixes.patch
++git apply .\marketapp-postgres-test-fixes.patch
++dotnet build MarketApp.sln
++```
++
++## Verify against your test database
++
++```powershell
++$env:MARKETAPP_TEST_POSTGRES = "Host=localhost;Port=5432;Database=MarketApp_Test;Username=postgres;Password=YOUR_LOCAL_PASSWORD"
++dotnet test tests/MarketApp.Api.Tests/MarketApp.Api.Tests.csproj --logger "trx;LogFileName=marketapp-postgres-after-fix.trx" --results-directory .\TestResults
++Remove-Item Env:MARKETAPP_TEST_POSTGRES
++```
++
++Replace the password locally. Tests create/drop isolated schemas and do not apply
++migrations. The API project now has 99 cases (91 existing plus eight new). Expected
++acceptance is zero failed and zero skipped with PostgreSQL configured. This is an
++expected result, not a completed verification result. Upload the new TRX if any
++test fails. The current environment did not execute the patched test suite.
++
++References:
++- https://github.com/npgsql/efcore.pg/blob/main/src/EFCore.PG/Storage/Internal/NpgsqlExecutionStrategy.cs
++- https://www.npgsql.org/doc/types/datetime.html
+diff --git a/src/MarketApp.Application/Services/StakeholderExpenseService.cs b/src/MarketApp.Application/Services/StakeholderExpenseService.cs
+index 3eb0811fbf602e05f592a104a3760dad6a2e65de..de6a5cd7c48d0de9eb9d12d915fb7c5a904b5fce 100644
+--- a/src/MarketApp.Application/Services/StakeholderExpenseService.cs
++++ b/src/MarketApp.Application/Services/StakeholderExpenseService.cs
+@@ -17,6 +17,10 @@ public sealed class StakeholderExpenseService(IUnitOfWork work) : IStakeholderEx
+             throw new RequestException(400, string.Join(" ", errors.Select(e => e.ErrorMessage)));
+     }
+     private static string? Optional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
++    // PostgreSQL persists microseconds, while DateTime can contain 100ns ticks.
++    // Use the persisted precision so the first response and later retries agree.
++    private static DateTime AtDatabasePrecision(DateTime value)
++        => new(value.Ticks - value.Ticks % TimeSpan.TicksPerMicrosecond, value.Kind);
+     public static StakeholderExpenseDto ToDto(StakeholderExpense e) => new(e.Id, e.ClientExpenseId, e.BranchId,
+         e.Branch?.Name, e.Category, e.Amount, e.OccurredAtUtc, e.Description, e.PaidTo, e.ReferenceNumber,
+         e.CreatedByUserId, e.CreatedAtUtc, e.VoidedByUserId, e.VoidedAtUtc, e.VoidReason);
+@@ -50,9 +54,9 @@ public sealed class StakeholderExpenseService(IUnitOfWork work) : IStakeholderEx
+             : null;
+         var expense = new StakeholderExpense {
+             ClientExpenseId = request.ClientExpenseId, RequestHash = hash, BranchId = request.BranchId,
+-            Category = request.Category, Amount = request.Amount, OccurredAtUtc = request.OccurredAtUtc,
++            Category = request.Category, Amount = request.Amount, OccurredAtUtc = AtDatabasePrecision(request.OccurredAtUtc),
+             Description = request.Description.Trim(), PaidTo = Optional(request.PaidTo), ReferenceNumber = Optional(request.ReferenceNumber),
+-            CreatedByUserId = actorId };
++            CreatedByUserId = actorId, CreatedAtUtc = AtDatabasePrecision(DateTime.UtcNow) };
+         await work.StakeholderExpenses.AddAsync(expense, ct);
+         await work.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
+         return ToDto(expense) with { BranchName = branch?.Name };
+@@ -71,7 +75,7 @@ public sealed class StakeholderExpenseService(IUnitOfWork work) : IStakeholderEx
+                 throw new ConflictException("Expense was already voided with different details.");
+             return ToDto(expense);
+         }
+-        expense.VoidedAtUtc = DateTime.UtcNow; expense.VoidedByUserId = actorId; expense.VoidReason = request.Reason.Trim();
++        expense.VoidedAtUtc = AtDatabasePrecision(DateTime.UtcNow); expense.VoidedByUserId = actorId; expense.VoidReason = request.Reason.Trim();
+         await work.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
+         return ToDto(expense);
+     }
+diff --git a/src/MarketApp.Infrastructure/Persistence/DatabaseConflictHandler.cs b/src/MarketApp.Infrastructure/Persistence/DatabaseConflictHandler.cs
+index 548b683464aa280f51fbe67a75ca72469ce4161d..b3155c2c356e275904936739fd0305fd1dd1011f 100644
+--- a/src/MarketApp.Infrastructure/Persistence/DatabaseConflictHandler.cs
++++ b/src/MarketApp.Infrastructure/Persistence/DatabaseConflictHandler.cs
+@@ -10,7 +10,17 @@ public sealed class DatabaseConflictHandler : IExceptionHandler
+ {
+     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
+     {
+-        var cause = exception as PostgresException ?? exception.InnerException as PostgresException;
++        // EF/Npgsql may wrap a serialization failure in both DbUpdateException
++        // and InvalidOperationException. Inspect the entire inner-exception chain.
++        PostgresException? cause = null;
++        for (Exception? current = exception; current is not null; current = current.InnerException)
++        {
++            if (current is PostgresException postgres)
++            {
++                cause = postgres;
++                break;
++            }
++        }
+         if (cause?.SqlState is not ("40001" or "40P01" or "23505" or "23503")) return false;
+         context.Response.StatusCode = 409;
+         await context.Response.WriteAsJsonAsync(new ProblemDetails
+diff --git a/tests/MarketApp.Api.Tests/DatabaseConflictHandlerTests.cs b/tests/MarketApp.Api.Tests/DatabaseConflictHandlerTests.cs
+new file mode 100644
+index 0000000000000000000000000000000000000000..cf8d990a75de6e91d738e0c0c4484a857e0fae8a
+--- /dev/null
++++ b/tests/MarketApp.Api.Tests/DatabaseConflictHandlerTests.cs
+@@ -0,0 +1,51 @@
++using System.Text.Json;
++using MarketApp.Infrastructure.Persistence;
++using Microsoft.AspNetCore.Http;
++using Microsoft.EntityFrameworkCore;
++using Npgsql;
++
++namespace MarketApp.Api.Tests;
++
++public sealed class DatabaseConflictHandlerTests
++{
++    [Theory]
++    [InlineData("40001", 0)]
++    [InlineData("40001", 1)]
++    [InlineData("40001", 2)]
++    [InlineData("40P01", 2)]
++    [InlineData("23505", 2)]
++    [InlineData("23503", 2)]
++    public async Task Database_conflicts_return_409_even_inside_provider_wrappers(string sqlState, int wrappers)
++    {
++        Exception error = new PostgresException("Private database detail", "ERROR", "ERROR", sqlState);
++        if (wrappers >= 1) error = new DbUpdateException("Save failed", error);
++        if (wrappers >= 2) error = new InvalidOperationException("Transient provider failure", error);
++        var context = new DefaultHttpContext();
++        context.Request.Path = "/api/test";
++        using var body = new MemoryStream(); context.Response.Body = body;
++
++        Assert.True(await new DatabaseConflictHandler().TryHandleAsync(context, error, CancellationToken.None));
++        Assert.Equal(StatusCodes.Status409Conflict, context.Response.StatusCode);
++        body.Position = 0;
++        using var json = await JsonDocument.ParseAsync(body);
++        Assert.Equal(409, json.RootElement.GetProperty("status").GetInt32());
++        Assert.DoesNotContain("Private database detail", json.RootElement.GetRawText());
++    }
++
++    [Theory]
++    [InlineData(false)]
++    [InlineData(true)]
++    public async Task Unrelated_errors_are_left_for_the_global_handler(bool databaseError)
++    {
++        Exception inner = databaseError
++            ? new PostgresException("Undefined table", "ERROR", "ERROR", "42P01")
++            : new ArgumentException("Invalid argument");
++        var error = new InvalidOperationException("Wrapper", new Exception("Nested", inner));
++        var context = new DefaultHttpContext();
++        using var body = new MemoryStream(); context.Response.Body = body;
++
++        Assert.False(await new DatabaseConflictHandler().TryHandleAsync(context, error, CancellationToken.None));
++        Assert.Equal(0L, body.Length);
++        Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
++    }
++}
+diff --git a/tests/MarketApp.Api.Tests/StakeholderExpenseApiTests.cs b/tests/MarketApp.Api.Tests/StakeholderExpenseApiTests.cs
+index ae2a4f494698f6c3100d0be67692c79ee5238fde..ab75b6be95ba71403fc3c123c9520d64d7735a6f 100644
+--- a/tests/MarketApp.Api.Tests/StakeholderExpenseApiTests.cs
++++ b/tests/MarketApp.Api.Tests/StakeholderExpenseApiTests.cs
+@@ -48,7 +48,13 @@ public sealed partial class SalesApiTests
+     public async Task Stakeholder_expense_exact_retry_and_changed_payload_preserve_one_record()
+     {
+         Role(AppRoles.Stakeholder, _owner); var request = StakeholderExpense();
++        // Force sub-microsecond precision instead of depending on the OS clock.
++        request.OccurredAtUtc = DateTime.UtcNow.Date.AddTicks(7);
+         var saved = await PostStakeholderExpense(request); var replay = await PostStakeholderExpense(request); Assert.Equal(saved, replay);
++        Assert.Equal(request.OccurredAtUtc.Date, saved.OccurredAtUtc);
++        Assert.Equal(0L, saved.CreatedAtUtc.Ticks % TimeSpan.TicksPerMicrosecond);
++        Assert.Equal(saved, await _client.GetFromJsonAsync<StakeholderExpenseDto>(StakeholderExpensesUrl + "/" + saved.Id));
++        Assert.Equal(7L, request.OccurredAtUtc.Ticks % TimeSpan.TicksPerMicrosecond);
+         request.Amount = 600;
+         Assert.Equal(HttpStatusCode.Conflict, (await _client.PostAsJsonAsync(StakeholderExpensesUrl, request)).StatusCode);
+         request.Amount = 500; request.BranchId = _otherBranch;
+@@ -107,8 +113,14 @@ public sealed partial class SalesApiTests
+         Role(AppRoles.Stakeholder, _owner); var request = StakeholderExpense(); var saved = await PostStakeholderExpense(request);
+         var url = StakeholderExpensesUrl + $"/{saved.Id}/void"; var reason = new VoidStakeholderExpenseDto { Reason = "Duplicate receipt" };
+         Assert.Equal(HttpStatusCode.BadRequest, (await _client.PostAsJsonAsync(url, new VoidStakeholderExpenseDto { Reason = "   " })).StatusCode);
+-        Assert.Equal(HttpStatusCode.OK, (await _client.PostAsJsonAsync(url, reason)).StatusCode);
+-        Assert.Equal(HttpStatusCode.OK, (await _client.PostAsJsonAsync(url, reason)).StatusCode);
++        var firstVoid = await _client.PostAsJsonAsync(url, reason);
++        var repeatedVoid = await _client.PostAsJsonAsync(url, reason);
++        Assert.Equal(HttpStatusCode.OK, firstVoid.StatusCode);
++        Assert.Equal(HttpStatusCode.OK, repeatedVoid.StatusCode);
++        var voided = await firstVoid.Content.ReadFromJsonAsync<StakeholderExpenseDto>();
++        Assert.NotNull(voided); Assert.NotNull(voided.VoidedAtUtc);
++        Assert.Equal(0L, voided.VoidedAtUtc.Value.Ticks % TimeSpan.TicksPerMicrosecond);
++        Assert.Equal(voided, await repeatedVoid.Content.ReadFromJsonAsync<StakeholderExpenseDto>());
+         Assert.Equal(HttpStatusCode.Conflict, (await _client.PostAsJsonAsync(url, new VoidStakeholderExpenseDto { Reason = "Different reason" })).StatusCode);
+         Assert.Empty((await StakeholderExpenseList()).Items);
+         var audit = await StakeholderExpenseList("?includeVoided=true"); Assert.Equal(0, audit.ActiveAmount);

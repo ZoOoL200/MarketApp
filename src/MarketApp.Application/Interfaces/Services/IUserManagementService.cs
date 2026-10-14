@@ -15,4 +15,8 @@ public interface IUserManagementService
     Task<UserDetailsDto?> GetByIdAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
+    Task<UserManagementResult> CreateStakeholderAsync(
+    CreateStakeholderRequestDto request,
+    Guid actorId,
+    CancellationToken cancellationToken = default);
 }

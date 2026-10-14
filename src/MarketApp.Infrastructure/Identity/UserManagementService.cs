@@ -228,8 +228,23 @@ public class UserManagementService : IUserManagementService
         await using var tx = await _context.Database.BeginTransactionAsync(ct);
         var user = await _context.Users.SingleOrDefaultAsync(u => u.Id == userId, ct)
             ?? throw new MarketApp.Application.Common.Exceptions.RequestException(404, "User not found.");
-        if (user.Id == actorId || await _userManager.IsInRoleAsync(user, AppRoles.Stakeholder))
-            throw new MarketApp.Application.Common.Exceptions.RequestException(400, "This endpoint manages staff accounts only; it cannot alter stakeholder access.");
+        var roles = await _userManager.GetRolesAsync(user);
+
+        var isStaff =
+            roles.Contains(AppRoles.BranchManager) ||
+            roles.Contains(AppRoles.Seller);
+
+        var isPrivileged =
+            roles.Contains(AppRoles.Stakeholder) ||
+            roles.Contains(AppRoles.SystemAdmin);
+
+        if (user.Id == actorId || isPrivileged || !isStaff)
+        {
+            throw new MarketApp.Application.Common.Exceptions.RequestException(
+                400,
+                "This endpoint manages other branch staff accounts only. "
+                + "It cannot alter Stakeholder or SystemAdmin access.");
+        }
         var ids = request.BranchIds.Distinct().ToArray();
         if (request.IsActive && ids.Length == 0)
             throw new MarketApp.Application.Common.Exceptions.RequestException(400, "Active staff need at least one branch.");
@@ -264,5 +279,138 @@ public class UserManagementService : IUserManagementService
             Error: string.Join(
                 " ",
                 result.Errors.Select(error => error.Description)));
+    }
+
+    public async Task<UserManagementResult> CreateStakeholderAsync(
+    CreateStakeholderRequestDto request,
+    Guid actorId,
+    CancellationToken cancellationToken = default)
+    {
+        // Defense in depth: verify the actor in the service as well.
+        var actor = await _userManager.FindByIdAsync(actorId.ToString());
+
+        if (actor is null ||
+            !actor.IsActive ||
+            !await _userManager.IsInRoleAsync(actor, AppRoles.SystemAdmin))
+        {
+            throw new MarketApp.Application.Common.Exceptions.RequestException(
+                403,
+                "Only an active SystemAdmin can create stakeholder accounts.");
+        }
+
+        var validationResults = new List<ValidationResult>();
+
+        if (!Validator.TryValidateObject(
+                request,
+                new ValidationContext(request),
+                validationResults,
+                validateAllProperties: true))
+        {
+            return new UserManagementResult(
+                UserManagementResultStatus.InvalidRequest,
+                Error: string.Join(
+                    " ",
+                    validationResults.Select(
+                        x => x.ErrorMessage ?? "Invalid request.")));
+        }
+
+        var userName = request.UserName.Trim();
+        var fullName = request.FullName.Trim();
+        var email = request.Email.Trim();
+
+        if (!await _roleManager.RoleExistsAsync(AppRoles.Stakeholder))
+        {
+            return new UserManagementResult(
+                UserManagementResultStatus.Conflict,
+                Error: "The Stakeholder role has not been initialized.");
+        }
+
+        if (await _userManager.FindByNameAsync(userName) is not null)
+        {
+            return new UserManagementResult(
+                UserManagementResultStatus.Conflict,
+                Error: "This username is already in use.");
+        }
+
+        if (await _userManager.FindByEmailAsync(email) is not null)
+        {
+            return new UserManagementResult(
+                UserManagementResultStatus.Conflict,
+                Error: "This email address is already in use.");
+        }
+
+        await using var transaction =
+            await _context.Database.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            var user = new ApplicationUser
+            {
+                UserName = userName,
+                FullName = fullName,
+                Email = email,
+                IsActive = true,
+                EmailConfirmed = false,
+                LockoutEnabled = true,
+                CreatedAtUtc = DateTime.UtcNow,
+                CreatedByUserId = actorId
+            };
+
+            var createResult = await _userManager.CreateAsync(
+                user,
+                request.Password);
+
+            if (!createResult.Succeeded)
+            {
+                return FromIdentityFailure(createResult);
+            }
+
+            var roleResult = await _userManager.AddToRoleAsync(
+                user,
+                AppRoles.Stakeholder);
+
+            if (!roleResult.Succeeded)
+            {
+                return FromIdentityFailure(roleResult);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+
+            var dto = new UserDetailsDto(
+                user.Id,
+                user.UserName!,
+                user.FullName,
+                user.Email!,
+                user.IsActive,
+                user.EmailConfirmed,
+                user.CreatedAtUtc,
+                new[] { AppRoles.Stakeholder },
+                Array.Empty<Guid>());
+
+            return new UserManagementResult(
+                UserManagementResultStatus.Success,
+                User: dto);
+        }
+        catch (DbUpdateException exception)
+            when (exception.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation,
+                ConstraintName: "UserNameIndex" or "EmailIndex"
+            })
+        {
+            return new UserManagementResult(
+                UserManagementResultStatus.Conflict,
+                Error: "The username or email address is already in use.");
+        }
+        catch (DbUpdateException exception)
+            when (exception.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.ForeignKeyViolation
+            })
+        {
+            return new UserManagementResult(
+                UserManagementResultStatus.Conflict,
+                Error: "A related account or role changed. Try again.");
+        }
     }
 }

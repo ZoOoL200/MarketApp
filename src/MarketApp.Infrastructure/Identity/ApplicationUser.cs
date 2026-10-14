@@ -15,6 +15,7 @@ public class ApplicationUser : IdentityUser<Guid>
     public bool IsActive { get; set; } = true;
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public Guid? CreatedByUserId { get; set; }
 
     public ICollection<ApplicationUserBranch> BranchAssignments { get; set; }
         = new List<ApplicationUserBranch>();

@@ -48,7 +48,13 @@ public sealed partial class SalesApiTests
     public async Task Stakeholder_expense_exact_retry_and_changed_payload_preserve_one_record()
     {
         Role(AppRoles.Stakeholder, _owner); var request = StakeholderExpense();
+        // Force sub-microsecond precision instead of depending on the OS clock.
+        request.OccurredAtUtc = DateTime.UtcNow.Date.AddTicks(7);
         var saved = await PostStakeholderExpense(request); var replay = await PostStakeholderExpense(request); Assert.Equal(saved, replay);
+        Assert.Equal(request.OccurredAtUtc.Date, saved.OccurredAtUtc);
+        Assert.Equal(0L, saved.CreatedAtUtc.Ticks % TimeSpan.TicksPerMicrosecond);
+        Assert.Equal(saved, await _client.GetFromJsonAsync<StakeholderExpenseDto>(StakeholderExpensesUrl + "/" + saved.Id));
+        Assert.Equal(7L, request.OccurredAtUtc.Ticks % TimeSpan.TicksPerMicrosecond);
         request.Amount = 600;
         Assert.Equal(HttpStatusCode.Conflict, (await _client.PostAsJsonAsync(StakeholderExpensesUrl, request)).StatusCode);
         request.Amount = 500; request.BranchId = _otherBranch;
@@ -107,8 +113,14 @@ public sealed partial class SalesApiTests
         Role(AppRoles.Stakeholder, _owner); var request = StakeholderExpense(); var saved = await PostStakeholderExpense(request);
         var url = StakeholderExpensesUrl + $"/{saved.Id}/void"; var reason = new VoidStakeholderExpenseDto { Reason = "Duplicate receipt" };
         Assert.Equal(HttpStatusCode.BadRequest, (await _client.PostAsJsonAsync(url, new VoidStakeholderExpenseDto { Reason = "   " })).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await _client.PostAsJsonAsync(url, reason)).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await _client.PostAsJsonAsync(url, reason)).StatusCode);
+        var firstVoid = await _client.PostAsJsonAsync(url, reason);
+        var repeatedVoid = await _client.PostAsJsonAsync(url, reason);
+        Assert.Equal(HttpStatusCode.OK, firstVoid.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, repeatedVoid.StatusCode);
+        var voided = await firstVoid.Content.ReadFromJsonAsync<StakeholderExpenseDto>();
+        Assert.NotNull(voided); Assert.NotNull(voided.VoidedAtUtc);
+        Assert.Equal(0L, voided.VoidedAtUtc.Value.Ticks % TimeSpan.TicksPerMicrosecond);
+        Assert.Equal(voided, await repeatedVoid.Content.ReadFromJsonAsync<StakeholderExpenseDto>());
         Assert.Equal(HttpStatusCode.Conflict, (await _client.PostAsJsonAsync(url, new VoidStakeholderExpenseDto { Reason = "Different reason" })).StatusCode);
         Assert.Empty((await StakeholderExpenseList()).Items);
         var audit = await StakeholderExpenseList("?includeVoided=true"); Assert.Equal(0, audit.ActiveAmount);

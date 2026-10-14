@@ -17,6 +17,10 @@ public sealed class StakeholderExpenseService(IUnitOfWork work) : IStakeholderEx
             throw new RequestException(400, string.Join(" ", errors.Select(e => e.ErrorMessage)));
     }
     private static string? Optional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    // PostgreSQL persists microseconds, while DateTime can contain 100ns ticks.
+    // Use the persisted precision so the first response and later retries agree.
+    private static DateTime AtDatabasePrecision(DateTime value)
+        => new(value.Ticks - value.Ticks % TimeSpan.TicksPerMicrosecond, value.Kind);
     public static StakeholderExpenseDto ToDto(StakeholderExpense e) => new(e.Id, e.ClientExpenseId, e.BranchId,
         e.Branch?.Name, e.Category, e.Amount, e.OccurredAtUtc, e.Description, e.PaidTo, e.ReferenceNumber,
         e.CreatedByUserId, e.CreatedAtUtc, e.VoidedByUserId, e.VoidedAtUtc, e.VoidReason);
@@ -50,9 +54,9 @@ public sealed class StakeholderExpenseService(IUnitOfWork work) : IStakeholderEx
             : null;
         var expense = new StakeholderExpense {
             ClientExpenseId = request.ClientExpenseId, RequestHash = hash, BranchId = request.BranchId,
-            Category = request.Category, Amount = request.Amount, OccurredAtUtc = request.OccurredAtUtc,
+            Category = request.Category, Amount = request.Amount, OccurredAtUtc = AtDatabasePrecision(request.OccurredAtUtc),
             Description = request.Description.Trim(), PaidTo = Optional(request.PaidTo), ReferenceNumber = Optional(request.ReferenceNumber),
-            CreatedByUserId = actorId };
+            CreatedByUserId = actorId, CreatedAtUtc = AtDatabasePrecision(DateTime.UtcNow) };
         await work.StakeholderExpenses.AddAsync(expense, ct);
         await work.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
         return ToDto(expense) with { BranchName = branch?.Name };
@@ -71,7 +75,7 @@ public sealed class StakeholderExpenseService(IUnitOfWork work) : IStakeholderEx
                 throw new ConflictException("Expense was already voided with different details.");
             return ToDto(expense);
         }
-        expense.VoidedAtUtc = DateTime.UtcNow; expense.VoidedByUserId = actorId; expense.VoidReason = request.Reason.Trim();
+        expense.VoidedAtUtc = AtDatabasePrecision(DateTime.UtcNow); expense.VoidedByUserId = actorId; expense.VoidReason = request.Reason.Trim();
         await work.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
         return ToDto(expense);
     }
