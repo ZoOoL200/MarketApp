@@ -137,7 +137,9 @@ public class IdentityInitializer
         string[] requiredRoles =
         [
             AppRoles.SystemAdmin,
-            AppRoles.Stakeholder
+            AppRoles.Stakeholder,
+            AppRoles.BranchManager,
+            AppRoles.Seller
         ];
 
         foreach (var roleName in requiredRoles)
