@@ -23,8 +23,12 @@ public class S3ProductPhotoStorage : IProductPhotoStorage
         using var input = new MemoryStream(bytes, writable: false);
         await _client.PutObjectAsync(new PutObjectRequest
         {
-            BucketName = _bucketName, Key = storageKey, InputStream = input,
-            ContentType = contentType, AutoCloseStream = false
+            BucketName = _bucketName,
+            Key = storageKey,
+            InputStream = input,
+            ContentType = contentType,
+            AutoCloseStream = false,
+            UseChunkEncoding = false
         }, cancellationToken);
     }
 

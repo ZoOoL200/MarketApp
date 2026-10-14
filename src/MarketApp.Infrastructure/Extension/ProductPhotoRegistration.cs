@@ -29,9 +29,55 @@ public static class ProductPhotoRegistration
                 throw new InvalidOperationException("Provide both S3 access credentials or neither.");
             services.AddSingleton<IAmazonS3>(_ =>
             {
+                // Use a custom endpoint for Supabase or other S3-compatible storage.
+                if (!string.IsNullOrWhiteSpace(options.ServiceUrl))
+                {
+                    if (!Uri.TryCreate(
+                            options.ServiceUrl,
+                            UriKind.Absolute,
+                            out var endpoint)
+                        || endpoint.Scheme != Uri.UriSchemeHttps
+                        || !string.IsNullOrEmpty(endpoint.UserInfo)
+                        || !string.IsNullOrEmpty(endpoint.Query)
+                        || !string.IsNullOrEmpty(endpoint.Fragment))
+                    {
+                        throw new InvalidOperationException(
+                            "PhotoStorage:ServiceUrl must be an absolute HTTPS URL " +
+                            "without credentials, query parameters, or a fragment.");
+                    }
+
+                    if (!hasAccessKey || !hasSecretKey)
+                    {
+                        throw new InvalidOperationException(
+                            "A custom S3 endpoint requires both " +
+                            "PhotoStorage:AccessKeyId and SecretAccessKey.");
+                    }
+
+                    var s3Config = new AmazonS3Config
+                    {
+                        ServiceURL = options.ServiceUrl.TrimEnd('/'),
+                        AuthenticationRegion = options.Region,
+                        ForcePathStyle = true,
+                        RequestChecksumCalculation =
+                            RequestChecksumCalculation.WHEN_REQUIRED
+                    };
+
+                    var credentials = new BasicAWSCredentials(
+                        options.AccessKeyId,
+                        options.SecretAccessKey);
+
+                    return new AmazonS3Client(credentials, s3Config);
+                }
+
+                // Use the normal AWS endpoint when no custom URL is configured.
                 var region = RegionEndpoint.GetBySystemName(options.Region);
+
                 return hasAccessKey
-                    ? new AmazonS3Client(new BasicAWSCredentials(options.AccessKeyId, options.SecretAccessKey), region)
+                    ? new AmazonS3Client(
+                        new BasicAWSCredentials(
+                            options.AccessKeyId,
+                            options.SecretAccessKey),
+                        region)
                     : new AmazonS3Client(region);
             });
             services.AddSingleton<IProductPhotoStorage, S3ProductPhotoStorage>();

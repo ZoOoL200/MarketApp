@@ -9,4 +9,5 @@ public class PhotoStorageOptions
     // Optional development credentials. Use User Secrets, not committed config.
     public string AccessKeyId { get; set; } = string.Empty;
     public string SecretAccessKey { get; set; } = string.Empty;
+    public string ServiceUrl { get; set; } = string.Empty;
 }
