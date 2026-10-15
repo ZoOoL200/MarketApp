@@ -1,0 +1,39 @@
+# Git and editor files
+.git
+.vs
+.vscode
+.idea
+
+# Local build output
+**/bin
+**/obj
+**/TestResults
+**/publish
+artifacts
+
+# Local settings and credentials
+**/.env
+**/.env.*
+**/secrets.json
+**/*.pfx
+**/*.p12
+**/*.pem
+**/*.key
+**/*.user
+**/*.suo
+**/appsettings.Development.json
+**/appsettings.Local.json
+
+# Local HTTP requests and launch profiles
+**/*.http
+**/launchSettings.json
+
+# Documentation and tests
+docs
+tests
+**/*.docx
+**/*.pdf
+**/*.patch
+
+# Local logs
+**/*.log
