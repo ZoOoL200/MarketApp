@@ -3,18 +3,22 @@ using MarketApp.Domain.Entity.Main;
 using MarketApp.Domain.Entity.Pricing;
 using MarketApp.Domain.Entity.Purchasing;
 using MarketApp.Infrastructure.Identity;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace MarketApp.Infrastructure.Persistence;
 
-public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
+public class AppDbContext
+    : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>,
+      IDataProtectionKeyContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
     {
     }
+    public DbSet<DataProtectionKey> DataProtectionKeys=> Set<DataProtectionKey>();
     public DbSet<MarketApp.Domain.Entity.Sales.SalesReturn> SalesReturns => Set<MarketApp.Domain.Entity.Sales.SalesReturn>();
     public DbSet<MarketApp.Domain.Entity.Sales.SalesReturnLine> SalesReturnLines => Set<MarketApp.Domain.Entity.Sales.SalesReturnLine>();
     public DbSet<MarketApp.Domain.Entity.Sales.StockAdjustment> StockAdjustments => Set<MarketApp.Domain.Entity.Sales.StockAdjustment>();

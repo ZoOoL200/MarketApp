@@ -11,9 +11,37 @@ public static class OperationalRegistration
     public static IServiceCollection AddMarketOperations(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         Validate(configuration, environment);
-        var protection = services.AddDataProtection().SetApplicationName("MarketApp");
-        var directory = configuration["DataProtection:KeysPath"];
-        if (!string.IsNullOrWhiteSpace(directory)) protection.PersistKeysToFileSystem(new DirectoryInfo(directory));
+        var protection = services.AddDataProtection()
+            .SetApplicationName("MarketApp");
+
+        var keyProvider =
+            configuration["DataProtection:Provider"] ?? "FileSystem";
+
+        if (string.Equals(
+                keyProvider,
+                "Database",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            protection.PersistKeysToDbContext<AppDbContext>();
+        }
+        else if (string.Equals(
+                     keyProvider,
+                     "FileSystem",
+                     StringComparison.OrdinalIgnoreCase))
+        {
+            var directory = configuration["DataProtection:KeysPath"];
+
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                protection.PersistKeysToFileSystem(
+                    new DirectoryInfo(directory));
+            }
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                "DataProtection:Provider must be Database or FileSystem.");
+        }
         var certificate = configuration["DataProtection:CertificatePath"];
         if (!string.IsNullOrWhiteSpace(certificate)) protection.ProtectKeysWithCertificate(X509CertificateLoader.LoadPkcs12FromFile(certificate,
             configuration["DataProtection:CertificatePassword"], X509KeyStorageFlags.EphemeralKeySet));
@@ -52,8 +80,23 @@ public static class OperationalRegistration
         if (!string.Equals(configuration["Email:Provider"], "Smtp", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(configuration["Email:Host"]) ||
             !MailAddress.TryCreate(configuration["Email:From"], out _) || configuration.GetValue("Email:Port", 587) is < 1 or > 65535)
             throw new InvalidOperationException("Outside Development configure Email:Provider=Smtp, Host, From, and a valid Port.");
-        if (string.IsNullOrWhiteSpace(configuration["DataProtection:KeysPath"]) || !Path.IsPathFullyQualified(configuration["DataProtection:KeysPath"]!))
-            throw new InvalidOperationException("DataProtection:KeysPath must be an absolute persistent directory outside Development.");
+        var usesDatabaseKeys = string.Equals(
+            configuration["DataProtection:Provider"],
+            "Database",
+            StringComparison.OrdinalIgnoreCase);
+
+                if (!usesDatabaseKeys)
+                {
+                    var keysPath = configuration["DataProtection:KeysPath"];
+
+                    if (string.IsNullOrWhiteSpace(keysPath)
+                        || !Path.IsPathFullyQualified(keysPath))
+                    {
+                        throw new InvalidOperationException(
+                            "DataProtection:KeysPath must be an absolute persistent " +
+                            "directory when using FileSystem outside Development.");
+                    }
+                }
         var hosts = configuration["AllowedHosts"];
         if (string.IsNullOrWhiteSpace(hosts) || hosts.Split(';', StringSplitOptions.TrimEntries).Any(h => h.Length == 0 || h.Contains('*')))
             throw new InvalidOperationException("Outside Development set AllowedHosts to explicit API host names separated by semicolons.");
