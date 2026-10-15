@@ -106,9 +106,31 @@ public static class OperationalRegistration
         }));
         services.Configure<ForwardedHeadersOptions>(options =>
         {
-            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-            options.ForwardLimit = 1;
-            foreach (var proxy in configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? []) options.KnownProxies.Add(IPAddress.Parse(proxy));
+            options.ForwardedHeaders =
+                ForwardedHeaders.XForwardedFor |
+                ForwardedHeaders.XForwardedProto;
+
+            options.ForwardLimit =
+                configuration.GetValue("ReverseProxy:ForwardLimit", 1);
+
+            var proxies = configuration
+                .GetSection("ReverseProxy:KnownProxies")
+                .Get<string[]>() ?? [];
+
+            foreach (var proxy in proxies)
+            {
+                options.KnownProxies.Add(IPAddress.Parse(proxy));
+            }
+
+            var networks = configuration
+                .GetSection("ReverseProxy:KnownIPNetworks")
+                .Get<string[]>() ?? [];
+
+            foreach (var network in networks)
+            {
+                options.KnownIPNetworks.Add(
+                    System.Net.IPNetwork.Parse(network));
+            }
         });
         services.AddRateLimiter(options =>
         {
@@ -130,6 +152,29 @@ public static class OperationalRegistration
                 throw new InvalidOperationException("Cors:AllowedOrigins must be exact HTTPS origins without paths or trailing slashes; HTTP is allowed only in Development.");
         foreach (var proxy in configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [])
             if (!IPAddress.TryParse(proxy, out _)) throw new InvalidOperationException("ReverseProxy:KnownProxies must contain IP addresses.");
+        var forwardLimit =
+    configuration.GetValue("ReverseProxy:ForwardLimit", 1);
+
+        if (forwardLimit is < 1 or > 10)
+        {
+            throw new InvalidOperationException(
+                "ReverseProxy:ForwardLimit must be between 1 and 10.");
+        }
+
+        var knownNetworks = configuration
+            .GetSection("ReverseProxy:KnownIPNetworks")
+            .Get<string[]>() ?? [];
+
+        foreach (var network in knownNetworks)
+        {
+            if (!System.Net.IPNetwork.TryParse(network, out var parsedNetwork)
+                || parsedNetwork.PrefixLength == 0)
+            {
+                throw new InvalidOperationException(
+                    "ReverseProxy:KnownIPNetworks must contain valid CIDR " +
+                    "network ranges. Trusting all addresses with /0 is not allowed.");
+            }
+        }
         if (environment.IsDevelopment()) return;
         var emailProvider = configuration["Email:Provider"];
 
