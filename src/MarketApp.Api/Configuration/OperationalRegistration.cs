@@ -42,9 +42,63 @@ public static class OperationalRegistration
             throw new InvalidOperationException(
                 "DataProtection:Provider must be Database or FileSystem.");
         }
-        var certificate = configuration["DataProtection:CertificatePath"];
-        if (!string.IsNullOrWhiteSpace(certificate)) protection.ProtectKeysWithCertificate(X509CertificateLoader.LoadPkcs12FromFile(certificate,
-            configuration["DataProtection:CertificatePassword"], X509KeyStorageFlags.EphemeralKeySet));
+        var certificateBase64 =
+    configuration["DataProtection:CertificateBase64"];
+
+        var certificatePath =
+            configuration["DataProtection:CertificatePath"];
+
+        var certificatePassword =
+            configuration["DataProtection:CertificatePassword"];
+
+        X509Certificate2? protectionCertificate = null;
+
+        if (!string.IsNullOrWhiteSpace(certificateBase64))
+        {
+            byte[] certificateBytes;
+
+            try
+            {
+                certificateBytes = Convert.FromBase64String(certificateBase64);
+            }
+            catch (FormatException)
+            {
+                throw new InvalidOperationException(
+                    "DataProtection:CertificateBase64 must contain valid Base64.");
+            }
+
+            protectionCertificate = X509CertificateLoader.LoadPkcs12(
+                certificateBytes,
+                certificatePassword,
+                X509KeyStorageFlags.EphemeralKeySet);
+        }
+        else if (!string.IsNullOrWhiteSpace(certificatePath))
+        {
+            protectionCertificate = X509CertificateLoader.LoadPkcs12FromFile(
+                certificatePath,
+                certificatePassword,
+                X509KeyStorageFlags.EphemeralKeySet);
+        }
+
+        if (protectionCertificate is not null)
+        {
+            if (!protectionCertificate.HasPrivateKey)
+            {
+                throw new InvalidOperationException(
+                    "The Data Protection certificate must include its private key.");
+            }
+
+            protection.ProtectKeysWithCertificate(protectionCertificate);
+        }
+        else if (string.Equals(
+                     keyProvider,
+                     "Database",
+                     StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "Database Data Protection requires CertificateBase64 " +
+                "or CertificatePath.");
+        }
         services.AddCors(options => options.AddPolicy("ManagerWeb", policy =>
         {
             var origins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
