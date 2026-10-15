@@ -77,9 +77,42 @@ public static class OperationalRegistration
         foreach (var proxy in configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [])
             if (!IPAddress.TryParse(proxy, out _)) throw new InvalidOperationException("ReverseProxy:KnownProxies must contain IP addresses.");
         if (environment.IsDevelopment()) return;
-        if (!string.Equals(configuration["Email:Provider"], "Smtp", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(configuration["Email:Host"]) ||
-            !MailAddress.TryCreate(configuration["Email:From"], out _) || configuration.GetValue("Email:Port", 587) is < 1 or > 65535)
-            throw new InvalidOperationException("Outside Development configure Email:Provider=Smtp, Host, From, and a valid Port.");
+        var emailProvider = configuration["Email:Provider"];
+
+        if (!MailAddress.TryCreate(configuration["Email:From"], out _))
+        {
+            throw new InvalidOperationException(
+                "Outside Development, Email:From must be a valid email address.");
+        }
+
+        if (string.Equals(
+                emailProvider,
+                "Brevo",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(configuration["Email:ApiKey"]))
+            {
+                throw new InvalidOperationException(
+                    "Email:ApiKey is required for Brevo.");
+            }
+        }
+        else if (string.Equals(
+                     emailProvider,
+                     "Smtp",
+                     StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(configuration["Email:Host"])
+                || configuration.GetValue("Email:Port", 587) is < 1 or > 65535)
+            {
+                throw new InvalidOperationException(
+                    "SMTP requires Email:Host and a valid Email:Port.");
+            }
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                "Outside Development, Email:Provider must be Brevo or Smtp.");
+        }
         var usesDatabaseKeys = string.Equals(
             configuration["DataProtection:Provider"],
             "Database",

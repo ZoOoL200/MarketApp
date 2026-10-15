@@ -103,10 +103,51 @@ public static class ServiceCollectionsExtension
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<IAuthSessionService, AuthSessionService>();
 
+        services.AddHttpClient<BrevoEmailSender>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        })
+            .RedactLoggedHeaders(new[] { "api-key" });
+
         services.AddScoped<IApplicationEmailSender>(provider =>
-            string.Equals(configuration["Email:Provider"], "Smtp", StringComparison.OrdinalIgnoreCase) || !provider.GetRequiredService<IHostEnvironment>().IsDevelopment()
-                ? ActivatorUtilities.CreateInstance<SmtpEmailSender>(provider)
-                : ActivatorUtilities.CreateInstance<DevelopmentEmailSender>(provider));
+        {
+            var environment =
+                provider.GetRequiredService<IHostEnvironment>();
+
+            var emailProvider = configuration["Email:Provider"]
+                ?? (environment.IsDevelopment() ? "Development" : "");
+
+            if (string.Equals(
+                    emailProvider,
+                    "Brevo",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return provider.GetRequiredService<BrevoEmailSender>();
+            }
+
+            if (string.Equals(
+                    emailProvider,
+                    "Smtp",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return ActivatorUtilities.CreateInstance<SmtpEmailSender>(
+                    provider);
+            }
+
+            if (environment.IsDevelopment()
+                && string.Equals(
+                    emailProvider,
+                    "Development",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return ActivatorUtilities.CreateInstance<DevelopmentEmailSender>(
+                    provider);
+            }
+
+            throw new InvalidOperationException(
+                "Email:Provider must be Brevo or Smtp. " +
+                "Development is allowed only in the Development environment.");
+        });
         services.AddScoped<IEmailVerificationService, EmailVerificationService>();
 
         services.Configure<DataProtectionTokenProviderOptions>(options =>
