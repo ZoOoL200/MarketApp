@@ -41,33 +41,6 @@ builder.Services.AddAuthorization(options =>
 var app = builder.Build();
 
 
-// Temporary staging diagnostics: remove after proxy verification.
-// Temporary staging diagnostics: remove after proxy verification.
-if (app.Environment.IsStaging())
-{
-    app.Use(async (context, next) =>
-    {
-        if (context.Request.Path == "/diagnostics/proxy")
-        {
-            context.Items["MarketApp.ProxyDiagnostics"] = new
-            {
-                connectionIp =
-                    context.Connection.RemoteIpAddress?.ToString(),
-
-                forwardedFor =
-                    context.Request.Headers["X-Forwarded-For"].ToString(),
-
-                forwardedProto =
-                    context.Request.Headers["X-Forwarded-Proto"].ToString(),
-
-                trueClientIp =
-                    context.Request.Headers["True-Client-IP"].ToString()
-            };
-        }
-
-        await next(context);
-    });
-}
 
 // Configure the HTTP request pipeline.
 app.UseForwardedHeaders();
@@ -91,29 +64,6 @@ app.MapControllers();
 app.MapOpenApi().RequireAuthorization();
 app.MapMarketHealth();
 
-// Temporary staging diagnostics: remove after proxy verification.
-if (app.Environment.IsStaging())
-{
-    app.MapGet("/diagnostics/proxy", (HttpContext context) =>
-    {
-        context.Response.Headers.CacheControl = "no-store";
-
-        return Results.Ok(new
-        {
-            incoming = context.Items["MarketApp.ProxyDiagnostics"],
-
-            effectiveClientIp =
-                context.Connection.RemoteIpAddress?.ToString(),
-
-            effectiveScheme = context.Request.Scheme
-        });
-    })
-    .RequireAuthorization(new AuthorizeAttribute
-    {
-        Roles = AppRoles.Stakeholder
-    })
-    .ExcludeFromDescription();
-}
 
 if (app.Environment.IsDevelopment())
 {
