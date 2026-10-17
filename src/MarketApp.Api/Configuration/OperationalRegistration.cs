@@ -110,6 +110,35 @@ public static class OperationalRegistration
                 ForwardedHeaders.XForwardedFor |
                 ForwardedHeaders.XForwardedProto;
 
+            var useRenderClientIp =
+                configuration.GetValue<bool>("ReverseProxy:UseRenderClientIp");
+
+            if (useRenderClientIp)
+            {
+                if (!string.Equals(
+                        configuration["RENDER"],
+                        "true",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        "ReverseProxy:UseRenderClientIp is intended only for Render.");
+                }
+
+                // Render supplies the original client IP in this header.
+                options.ForwardedForHeaderName = "True-Client-IP";
+                options.ForwardLimit = 1;
+
+                // Accept forwarding information only from the local proxy.
+                options.KnownProxies.Clear();
+                options.KnownIPNetworks.Clear();
+
+                options.KnownProxies.Add(IPAddress.Loopback);
+                options.KnownProxies.Add(IPAddress.IPv6Loopback);
+
+                return;
+            }
+
+            // Standard configuration for local development or other hosts.
             options.ForwardLimit =
                 configuration.GetValue("ReverseProxy:ForwardLimit", 1);
 
