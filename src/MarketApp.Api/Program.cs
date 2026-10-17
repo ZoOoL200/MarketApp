@@ -42,6 +42,7 @@ var app = builder.Build();
 
 
 // Temporary staging diagnostics: remove after proxy verification.
+// Temporary staging diagnostics: remove after proxy verification.
 if (app.Environment.IsStaging())
 {
     app.Use(async (context, next) =>
@@ -57,7 +58,10 @@ if (app.Environment.IsStaging())
                     context.Request.Headers["X-Forwarded-For"].ToString(),
 
                 forwardedProto =
-                    context.Request.Headers["X-Forwarded-Proto"].ToString()
+                    context.Request.Headers["X-Forwarded-Proto"].ToString(),
+
+                trueClientIp =
+                    context.Request.Headers["True-Client-IP"].ToString()
             };
         }
 
